@@ -170,7 +170,7 @@ processing:
   output_format: "wav"
 
 transcription:
-  default_model: "ollama-llama"
+  default_model: "whisper-base"
   max_concurrent: 5
   chunk_processing: false
 """

@@ -50,21 +50,11 @@ system_prompt = """You are transcribing audio. Follow these formatting guideline
 
 Provide only the transcription without any introduction or conclusion."""
 
-[ollama]
-# Optimized for local Ollama models (phi-4 multimodal, etc.)
-system_prompt = """Task: Audio Transcription
-
-Instructions:
-1. Listen carefully to the entire audio file
-2. Transcribe every word spoken, maintaining accuracy
-3. Format with proper punctuation and paragraphs
-4. Label speakers as [Speaker 1], [Speaker 2] when applicable
-5. Note important sounds: [applause], [music], [silence]
-6. Mark unclear audio as [inaudible]
-7. Keep original language - no translation
-8. Be objective - no interpretation or summary
-
-Output the complete transcription only."""
+[whisper-local]
+# Note: Local Whisper models use 'initial_prompt' parameter differently than system prompts
+# The initial_prompt can slightly guide the transcription style but has limited effect
+# Whisper is designed for direct transcription and doesn't follow instructions like other models
+initial_prompt = ""  # Empty by default - Whisper works best with its default behavior
 
 [multilingual]
 # For multilingual transcription scenarios

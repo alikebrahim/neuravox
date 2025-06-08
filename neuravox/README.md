@@ -16,8 +16,8 @@ Neuravox is a comprehensive platform for processing and transcribing audio files
 
 - **Multi-Model Transcription**
   - Google Gemini Flash support
-  - OpenAI Whisper integration
-  - Local Ollama models
+  - OpenAI Whisper API integration
+  - Local Whisper models (offline transcription)
   - Chunk-aware processing with timing preservation
 
 - **Unified Pipeline**
@@ -132,15 +132,16 @@ workspace/
 - Good for long audio files
 - Requires Google API key
 
-### OpenAI Whisper
+### OpenAI Whisper API
 - High accuracy
-- Multiple model sizes
+- Cloud-based processing
 - Requires OpenAI API key
 
-### Ollama (Local)
-- Privacy-focused
+### Whisper Local
+- Complete offline operation
+- Multiple model sizes (tiny to large)
 - No API key required
-- Requires Ollama installation
+- GPU acceleration support
 
 ## Development
 

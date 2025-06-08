@@ -32,7 +32,7 @@ ffmpeg-python = ">=0.2.0"
 # AI/Transcription
 google-genai = ">=0.8.0"
 openai = ">=1.0.0"
-ollama = ">=0.3.3"
+openai-whisper = ">=20231117"
 
 # CLI and UI
 typer = {extras = ["all"], version = ">=0.12.0"}

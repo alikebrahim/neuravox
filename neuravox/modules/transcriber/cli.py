@@ -124,7 +124,7 @@ def list_models():
     table.add_column("Available", style="yellow")
     
     for key, model_config in config.models.items():
-        available = "✓" if model_config.api_key or model_config.provider == "ollama" else "✗"
+        available = "✓" if model_config.api_key or model_config.provider == "whisper-local" else "✗"
         table.add_row(
             key,
             model_config.name,
@@ -190,7 +190,7 @@ def select_model() -> Optional[str]:
     # Create model choices
     model_choices = []
     for i, (key, model_config) in enumerate(config.models.items(), 1):
-        available = "✓" if model_config.api_key or model_config.provider == "ollama" else "✗"
+        available = "✓" if model_config.api_key or model_config.provider == "whisper-local" else "✗"
         status_color = "green" if available == "✓" else "red"
         
         console.print(f"  {i}. [{status_color}]{available}[/{status_color}] {model_config.name} ({key})")

@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Neuravox is a unified platform that combines two powerful modules for neural audio processing:
 
 1. **audio_processor**: Sophisticated audio splitting tool that detects silence gaps (25+ seconds) and splits audio files for optimal transcription
-2. **ai_transcriber**: Modular CLI tool for transcribing audio using various AI models (Google Gemini, OpenAI Whisper, Ollama)
+2. **ai_transcriber**: Modular CLI tool for transcribing audio using various AI models (Google Gemini, OpenAI Whisper API, Local Whisper)
 
 The platform is integrated in the `neuravox` directory with a unified CLI command: `neuravox`
 

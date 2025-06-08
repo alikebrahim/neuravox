@@ -63,7 +63,7 @@ ruff format .
 
 - **modules/transcriber**: Transcription logic  
   - `engine.py`: Core transcription engine with model support
-  - `models/`: Provider implementations (Google, OpenAI, Ollama)
+  - `models/`: Provider implementations (Google, OpenAI, Whisper Local)
   - `config.py`: Configuration management
 
 - **modules/shared**: Common components

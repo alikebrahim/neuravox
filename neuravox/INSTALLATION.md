@@ -10,7 +10,10 @@ Neuravox is a standalone neural audio processing and transcription platform. Thi
 - **Operating System**: Linux, macOS, or Windows
 - **Memory**: 4GB RAM minimum (8GB recommended for large files)
 - **Storage**: 10GB free space for workspace and dependencies
-- **Audio Dependencies**: FFmpeg (automatically handled by the platform)
+- **Audio Dependencies**: FFmpeg (required for audio processing and Whisper)
+  - Linux: `sudo apt install ffmpeg`
+  - macOS: `brew install ffmpeg`
+  - Windows: Automatically handled by ffmpeg-python package
 
 ## Virtual Environment Handling
 

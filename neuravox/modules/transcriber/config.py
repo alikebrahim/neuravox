@@ -8,17 +8,18 @@ import os
 class ModelConfig(BaseModel):
     """Configuration for a specific transcription model."""
     name: str
-    provider: str  # 'google', 'openai', 'ollama'
+    provider: str  # 'google', 'openai', 'whisper-local'
     model_id: str
     api_key: Optional[str] = None
     api_url: Optional[str] = None
+    device: Optional[str] = None  # For local models: 'cuda', 'cpu', or None for auto
     parameters: Dict[str, Any] = Field(default_factory=dict)
     system_prompt: Optional[str] = None  # Custom system prompt override
     
     @validator('provider')
     def validate_provider(cls, v):
-        if v not in ['google', 'openai', 'ollama']:
-            raise ValueError('Provider must be one of: google, openai, ollama')
+        if v not in ['google', 'openai', 'whisper-local']:
+            raise ValueError('Provider must be one of: google, openai, whisper-local')
         return v
 
 
@@ -129,12 +130,19 @@ class ConfigManager:
                 api_key=os.getenv("OPENAI_API_KEY"),
                 parameters={"response_format": "text"}
             ),
-            "ollama-phi4": ModelConfig(
-                name="Phi-4 Multimodal",
-                provider="ollama",
-                model_id="phi4",
-                api_url="http://localhost:11434",
-                parameters={"temperature": 0.1}
+            "whisper-base": ModelConfig(
+                name="Whisper Base (Local)",
+                provider="whisper-local",
+                model_id="base",
+                device=None,  # Auto-detect
+                parameters={"language": None}  # Auto-detect language
+            ),
+            "whisper-turbo": ModelConfig(
+                name="Whisper Turbo (Local)",
+                provider="whisper-local",
+                model_id="turbo",
+                device=None,  # Auto-detect
+                parameters={"language": None}  # Auto-detect language
             )
         }
         

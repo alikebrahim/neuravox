@@ -8,7 +8,7 @@ import librosa
 from .config import config_manager
 from .models.google_ai import GoogleAIModel
 from .models.openai import OpenAIModel
-from .models.ollama import OllamaModel
+from .models.whisper_local import LocalWhisperModel
 from ..shared.metadata import ProcessingMetadata, TranscriptionMetadata
 
 
@@ -44,10 +44,10 @@ class AudioTranscriber:
                     api_key=model_config.api_key,
                     **model_kwargs
                 )
-            elif model_config.provider == "ollama":
-                self._models[model_key] = OllamaModel(
+            elif model_config.provider == "whisper-local":
+                self._models[model_key] = LocalWhisperModel(
                     model_id=model_config.model_id,
-                    api_url=model_config.api_url or "http://localhost:11434",
+                    device=model_config.device,
                     **model_kwargs
                 )
             else:

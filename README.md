@@ -16,7 +16,7 @@ A unified platform for audio processing and AI-powered transcription, combining 
   - Support for all major audio formats (MP3, WAV, FLAC, M4A, etc.)
 
 - **Multi-Model Transcription**
-  - Support for Google Gemini, OpenAI Whisper, and Ollama models
+  - Support for Google Gemini, OpenAI Whisper API, and Local Whisper models
   - Chunk-aware transcription with timestamp preservation
   - Automatic transcript merging with timing information
   - Concurrent processing for optimal performance
@@ -144,7 +144,7 @@ Options:
 Process audio files through the complete pipeline.
 
 Options:
-- `--model, -m` - Transcription model to use (google-gemini, openai-whisper, ollama)
+- `--model, -m` - Transcription model to use (google-gemini, openai-whisper, whisper-base, whisper-turbo)
 - `--interactive, -i` - Interactive file selection mode
 - Files can be specified as arguments or selected interactively
 
@@ -241,11 +241,11 @@ export TRANSCRIPTION_DEFAULT_MODEL="openai-whisper"
 - Best for: Multiple language support
 - Get API key: https://platform.openai.com/api-keys
 
-#### Ollama (Local)
-- Model: `ollama`
-- Requires: Ollama installation
-- Best for: Privacy, offline usage
-- Setup: https://ollama.ai
+#### Whisper (Local)
+- Models: `whisper-tiny`, `whisper-base`, `whisper-small`, `whisper-medium`, `whisper-large`, `whisper-turbo`
+- Requires: FFmpeg installation
+- Best for: Privacy, offline usage, no API costs
+- GPU acceleration supported
 
 ## Project Structure
 
@@ -433,5 +433,5 @@ For new projects, use the unified `neuravox` command instead.
 
 - Built on the foundations of `audio_processor` and `ai_transcriber` modules
 - Uses librosa for audio processing
-- Integrates with Google, OpenAI, and Ollama APIs
+- Integrates with Google, OpenAI APIs, and Local Whisper
 - Rich CLI powered by Typer and Rich libraries
