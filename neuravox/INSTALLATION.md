@@ -16,27 +16,28 @@ Neuravox is a standalone neural audio processing and transcription platform. Thi
 
 When you run `neuravox` from the command line, the virtual environment is handled differently depending on your installation method:
 
-### Method 1: pipx (Recommended for End Users)
+### Method 1: Quick Install with pipx (Simplest)
 ```bash
-pipx install neuravox
+./scripts/quick-install.sh
 ```
+- **One command installation** - handles everything
 - **Automatic venv management** - pipx creates and manages the venv
 - **No manual activation needed** - just run `neuravox`
 - **Isolated from system Python** - no conflicts
 - **Easy updates**: `pipx upgrade neuravox`
 
-### Method 2: System Installation Script
+### Method 2: Interactive Installation (Recommended)
 ```bash
-# User installation (recommended)
 ./scripts/install-system.sh
-
-# System-wide installation
-sudo ./scripts/install-system.sh --system
 ```
-- **Creates wrapper script** that auto-activates venv
-- **No manual activation needed**
-- **Installs to**: `~/.neuravox` (user) or `/opt/neuravox` (system)
-- **Command available globally** via wrapper
+- **Modern TUI installer** - uses Gum/whiptail for beautiful menus
+- **Auto-detects your shell** - configures .bashrc or .zshrc automatically
+- **Prefers uv** - uses fast uv package manager, falls back to pip
+- **Choose installation type**:
+  - User Install (~/.neuravox) - Recommended
+  - System Install (/opt/neuravox) - Requires sudo
+  - Development Mode - For contributors
+- **Creates wrapper script** - no manual venv activation needed
 
 ### Method 3: Development Installation
 ```bash

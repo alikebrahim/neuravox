@@ -28,18 +28,33 @@ Neuravox is a comprehensive platform for processing and transcribing audio files
 
 ## Installation
 
+### Quick Install (Recommended)
 ```bash
 # Clone the repository
 git clone <repository-url>
 cd neuravox
 
-# Create virtual environment and install
+# Run the interactive installer
+./scripts/install-system.sh
+```
+
+The installer will:
+- Auto-detect your shell (bash/zsh/fish)
+- Use `uv` for fast installation (falls back to pip)
+- Create a global `neuravox` command
+- Initialize your workspace
+
+### Alternative: pipx Install
+```bash
+./scripts/quick-install.sh
+```
+
+### Development Install
+```bash
+# For contributors and developers
 uv venv
 source .venv/bin/activate
 uv pip install -e .
-
-# Initialize workspace
-neuravox init
 ```
 
 ## Quick Start
