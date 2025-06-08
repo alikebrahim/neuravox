@@ -1,0 +1,16 @@
+display:
+  progress_update_interval: 1.0
+  show_eta: true
+  show_memory: true
+  show_progress: true
+output:
+  create_metadata: true
+  format: wav
+  preserve_timestamps: true
+processing:
+  chunk_duration: 30.0
+  keep_silence: 1.0
+  min_chunk_duration: 5.0
+  min_silence_duration: 25.0
+  sample_rate: 22050
+  silence_threshold: 0.01

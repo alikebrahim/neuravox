@@ -1,0 +1,136 @@
+.TH NEURAVOX-CONFIG 1 "January 2025" "Version 1.0.0" "Neuravox"
+.SH NAME
+neuravox config \- View and manage configuration settings
+.SH SYNOPSIS
+.B neuravox config
+[\fISUBCOMMAND\fR] [\fIOPTIONS\fR]
+.SH DESCRIPTION
+The
+.B config
+command allows viewing and modifying configuration settings for the audio
+workflow platform. Configuration follows a hierarchy: environment variables
+override config files, which override defaults.
+.SH SUBCOMMANDS
+.TP
+.B show
+Display current configuration settings (default if no subcommand given)
+.TP
+.B set \fIKEY\fR \fIVALUE\fR
+Set a configuration value
+.TP
+.B get \fIKEY\fR
+Get a specific configuration value
+.TP
+.B reset \fIKEY\fR
+Reset a configuration value to default
+.TP
+.B edit
+Open configuration file in default editor
+.SH OPTIONS
+.TP
+.BR \-\-json
+Output configuration in JSON format
+.TP
+.BR \-\-yaml
+Output configuration in YAML format (default)
+.TP
+.BR \-\-system
+Show/modify system-wide configuration
+.TP
+.BR \-\-user
+Show/modify user configuration (default)
+.TP
+.BR \-\-help
+Show help message and exit
+.SH CONFIGURATION KEYS
+.SS Workspace Settings
+.TP
+.B workspace.base_path
+Base directory for all operations (default: ~/neuravox)
+.TP
+.B workspace.input_dir
+Subdirectory for input files (default: input)
+.TP
+.B workspace.processed_dir
+Subdirectory for processed chunks (default: processed)
+.TP
+.B workspace.transcribed_dir
+Subdirectory for transcripts (default: transcribed)
+.SS Processing Settings
+.TP
+.B processing.silence_threshold
+Volume threshold for silence detection (default: 0.01)
+.TP
+.B processing.min_silence_duration
+Minimum silence duration in seconds (default: 25.0)
+.TP
+.B processing.min_chunk_duration
+Minimum chunk duration in seconds (default: 5.0)
+.TP
+.B processing.sample_rate
+Output sample rate in Hz (default: 16000)
+.TP
+.B processing.output_format
+Output format for chunks (default: flac)
+.TP
+.B processing.normalize
+Normalize audio volume (default: true)
+.SS Transcription Settings
+.TP
+.B transcription.default_model
+Default transcription model (default: google-gemini)
+.TP
+.B transcription.max_concurrent
+Maximum concurrent transcriptions (default: 3)
+.TP
+.B transcription.chunk_processing
+Process chunks separately (default: true)
+.TP
+.B transcription.combine_chunks
+Combine chunks into single transcript (default: true)
+.SH EXAMPLES
+.TP
+Show current configuration:
+.B neuravox config show
+.TP
+Set default model:
+.B neuravox config set transcription.default_model openai-whisper
+.TP
+Get specific value:
+.B neuravox config get workspace.base_path
+.TP
+Reset to default:
+.B neuravox config reset processing.min_silence_duration
+.TP
+Edit config file:
+.B neuravox config edit
+.TP
+Show config as JSON:
+.B neuravox config show --json
+.SH FILES
+.TP
+.I ~/.config/neuravox/config.yaml
+User configuration file
+.TP
+.I /etc/neuravox/config.yaml
+System-wide configuration file
+.TP
+.I ./config/default.yaml
+Default configuration shipped with the application
+.SH ENVIRONMENT
+Configuration values can be overridden using environment variables:
+.TP
+.B NEURAVOX_{SECTION}_{KEY}
+Override any configuration value, e.g., NEURAVOX_PROCESSING_MIN_SILENCE_DURATION=30.0
+.SH NOTES
+.IP \(bu 2
+Changes take effect immediately for new processing jobs
+.IP \(bu 2
+API keys should be set via environment variables, not config files
+.IP \(bu 2
+Use 'neuravox config show' to verify current settings
+.SH SEE ALSO
+.BR neuravox (1),
+.BR neuravox-init (1)
+.SH BUGS
+Report bugs at: https://github.com/yourusername/neuravox/issues

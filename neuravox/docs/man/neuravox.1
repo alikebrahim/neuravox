@@ -1,0 +1,100 @@
+.TH NEURAVOX 1 "January 2025" "Version 1.0.0" "Neuravox"
+.SH NAME
+neuravox \- Unified audio processing and transcription platform
+.SH SYNOPSIS
+.B neuravox
+[\fIOPTIONS\fR] \fICOMMAND\fR [\fIARGS\fR]...
+.SH DESCRIPTION
+.B neuravox
+is a comprehensive platform that combines sophisticated silence-based audio splitting 
+with multi-model AI transcription capabilities. It processes audio files by detecting
+silence gaps (25+ seconds) and transcribing the resulting chunks using various AI models.
+.SH COMMANDS
+.TP
+.B init
+Initialize workspace and create directory structure
+.TP
+.B process
+Process audio files through the complete pipeline
+.TP
+.B status
+Show pipeline status and processing statistics
+.TP
+.B resume
+Resume processing of failed files
+.TP
+.B config
+View and manage configuration settings
+.SH GLOBAL OPTIONS
+.TP
+.BR \-\-help
+Show help message and exit
+.TP
+.BR \-\-version
+Show version number and exit
+.SH EXAMPLES
+.TP
+Initialize workspace in default location:
+.B neuravox init
+.TP
+Process files interactively:
+.B neuravox process --interactive
+.TP
+Process specific files with Google Gemini:
+.B neuravox process --model google-gemini audio1.mp3 audio2.wav
+.TP
+Check processing status:
+.B neuravox status
+.TP
+Resume failed jobs:
+.B neuravox resume
+.SH ENVIRONMENT
+.TP
+.B GOOGLE_API_KEY
+API key for Google Gemini transcription service
+.TP
+.B OPENAI_API_KEY
+API key for OpenAI Whisper transcription service
+.TP
+.B NEURAVOX_BASE_PATH
+Override default workspace base path
+.TP
+.B AUDIO_PROCESSING_MIN_SILENCE_DURATION
+Override minimum silence duration (default: 25.0 seconds)
+.TP
+.B TRANSCRIPTION_DEFAULT_MODEL
+Override default transcription model
+.SH FILES
+.TP
+.I ~/neuravox/
+Default workspace directory containing input/, processed/, and transcribed/ subdirectories
+.TP
+.I ~/.config/neuravox/config.yaml
+User configuration file
+.TP
+.I ./config/default.yaml
+Default configuration file
+.TP
+.I ./.env
+Environment variables file for API keys
+.SH EXIT STATUS
+.TP
+.B 0
+Successful completion
+.TP
+.B 1
+General error or invalid usage
+.TP
+.B 2
+Configuration error or missing API keys
+.SH SEE ALSO
+.BR neuravox-init (1),
+.BR neuravox-process (1),
+.BR neuravox-status (1),
+.BR neuravox-config (1)
+.SH BUGS
+Report bugs at: https://github.com/yourusername/neuravox/issues
+.SH AUTHOR
+Neuravox Contributors
+.SH COPYRIGHT
+Copyright (c) 2025. Licensed under the MIT License.

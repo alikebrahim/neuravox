@@ -1,0 +1,87 @@
+.TH NEURAVOX-INIT 1 "January 2025" "Version 1.0.0" "Neuravox"
+.SH NAME
+neuravox init \- Initialize workspace and configuration
+.SH SYNOPSIS
+.B neuravox init
+[\fIOPTIONS\fR]
+.SH DESCRIPTION
+The
+.B init
+command initializes the audio workflow workspace by creating the necessary
+directory structure and configuration files. This command should be run once
+before using the platform.
+.PP
+The command creates:
+.IP \(bu 2
+Workspace directories for input, processed, and transcribed files
+.IP \(bu 2
+SQLite database for state management
+.IP \(bu 2
+Configuration directory structure
+.IP \(bu 2
+Example configuration files
+.SH OPTIONS
+.TP
+.BR \-\-workspace " " \fIPATH\fR
+Custom workspace location. Default is ~/neuravox
+.TP
+.BR \-\-force
+Force initialization even if workspace already exists. This will not delete
+existing files but will ensure all directories are created.
+.TP
+.BR \-\-help
+Show help message and exit
+.SH DIRECTORY STRUCTURE
+The following structure is created:
+.PP
+.nf
+{workspace}/
+├── input/          # Place audio files here for processing
+├── processed/      # Split audio chunks stored here
+├── transcribed/    # Final transcripts saved here
+└── .pipeline_state.db  # SQLite database for state tracking
+.fi
+.SH EXAMPLES
+.TP
+Initialize with default settings:
+.B neuravox init
+.TP
+Initialize with custom workspace:
+.B neuravox init --workspace /data/audio-projects
+.TP
+Reinitialize existing workspace:
+.B neuravox init --force
+.SH CONFIGURATION
+After initialization, you can:
+.IP 1. 3
+Set API keys via environment variables or .env file
+.IP 2. 3
+Create a custom config file at ~/.config/neuravox/config.yaml
+.IP 3. 3
+Modify config/default.yaml for project-wide settings
+.SH FILES CREATED
+.TP
+.I {workspace}/.pipeline_state.db
+SQLite database for tracking processing state and enabling resume capability
+.TP
+.I {workspace}/input/
+Directory for placing audio files to be processed
+.TP
+.I {workspace}/processed/
+Directory containing processed audio chunks and metadata
+.TP
+.I {workspace}/transcribed/
+Directory containing final transcripts and transcription metadata
+.SH NOTES
+.IP \(bu 2
+The workspace path is stored in the configuration for future commands
+.IP \(bu 2
+You can have multiple workspaces by using different paths
+.IP \(bu 2
+The .pipeline_state.db file should not be deleted as it tracks processing history
+.SH SEE ALSO
+.BR neuravox (1),
+.BR neuravox-config (1),
+.BR neuravox-process (1)
+.SH BUGS
+Report bugs at: https://github.com/yourusername/neuravox/issues
