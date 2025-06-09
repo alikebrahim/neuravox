@@ -4,93 +4,91 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Neuravox is a unified platform that combines two powerful modules for neural audio processing:
+Neuravox is a unified platform for neural audio processing and transcription that combines:
 
-1. **audio_processor**: Sophisticated audio splitting tool that detects silence gaps (25+ seconds) and splits audio files for optimal transcription
-2. **ai_transcriber**: Modular CLI tool for transcribing audio using various AI models (Google Gemini, OpenAI Whisper API, Local Whisper)
+1. **Audio Processing**: Sophisticated audio splitting tool that detects silence gaps (25+ seconds) and splits audio files for optimal transcription
+2. **AI Transcription**: Modular transcription engine using various AI models (Google Gemini, OpenAI Whisper API, Local Whisper)
 
 The platform is integrated in the `neuravox` directory with a unified CLI command: `neuravox`
 
 ## Common Development Commands
 
-### Audio Processor Module
+### Using Neuravox
 ```bash
-cd audio_processor
+# From the project root
+cd neuravox
 
-# Install dependencies
+# Set up development environment
+uv venv
+source .venv/bin/activate
 uv sync
 
-# Run interactive processing (recommended)
-uv run python audio_splitter_cli.py process --interactive
+# Run from source
+python neuravox.py --help
 
-# Run batch processing with default settings
-uv run python audio_splitter_cli.py process
+# Initialize workspace
+python neuravox.py init
 
-# Process without moving files
-uv run python audio_splitter_cli.py process --no-move
+# Process and transcribe audio
+python neuravox.py process --interactive
 
-# Optimize single file
-uv run python audio_splitter_cli.py optimize input.wav -o output.flac
+# Check status
+python neuravox.py status
+
+# Resume failed jobs
+python neuravox.py resume
 ```
 
-### AI Transcriber Module
+### For installed version (after setup.sh)
 ```bash
-cd ai_transcriber
-
-# Install as package
-pip install -e .
-
-# Run interactive transcription (recommended)
-audio-transcriber interactive
-
-# Direct transcription
-audio-transcriber transcribe audio.mp3 --model google-gemini --project "project-name"
-
-# List available models
-audio-transcriber list-models
-```
-
-### Integrated Workflow (Recommended)
-```bash
-# Using the unified Neuravox platform
-cd neuravox
-uv pip install -e .
-
 # Initialize workspace
 neuravox init
 
 # Process and transcribe in one workflow
 neuravox process --interactive
+
+# Check processing status
+neuravox status
+
+# Resume any failed jobs
+neuravox resume
 ```
 
-### Legacy Module Usage
-The original modules can still be used independently as shown above.
+## Architecture & Key Components
 
-## Architecture & Integration Points
+### Project Structure
+```
+neuravox/
+├── neuravox.py           # Main entry point
+├── src/neuravox/         # Source code
+│   ├── cli/              # CLI interface
+│   ├── core/             # Pipeline orchestration
+│   ├── processor/        # Audio processing
+│   ├── transcriber/      # Transcription engine
+│   └── shared/           # Shared utilities
+├── config/               # Default configuration
+├── scripts/              # Setup and utility scripts
+└── workspace/            # User data (symlinked to ~/neuravox.workspace)
+```
 
-### Audio Processor
-- **Entry Point**: `audio_splitter_cli.py` (modern CLI) or `run.py` (simple batch)
-- **Core Logic**: `audio_splitter.py` - handles silence detection and splitting
+### Audio Processing
+- **Core Logic**: `src/neuravox/processor/audio_splitter.py` - handles silence detection and splitting
 - **Key Algorithm**: 25-second silence detection threshold (preserve this in any modifications)
 - **Output Format**: FLAC files optimized at 16kHz mono for transcription
 - **Metadata**: Generates JSON/CSV with chunk timings and statistics
 
-### AI Transcriber
-- **Entry Point**: `src/cli.py` via `audio-transcriber` command
-- **Model Architecture**: Pluggable model system in `src/models/` with base class and provider implementations
+### AI Transcription
+- **Engine**: `src/neuravox/transcriber/engine.py` - manages transcription workflow
+- **Model Architecture**: Pluggable model system in `src/neuravox/transcriber/models/` with base class and provider implementations
 - **Configuration**: System prompts in `config/prompts.toml`
 - **Project Organization**: All outputs organized by project name
 
 ### Integration Architecture
-Both modules share:
-- Similar directory structures (`input/`, `output/`)
-- Comprehensive metadata generation
-- Compatible audio formats (audio_processor outputs FLAC that transcriber handles well)
-
-Key integration points:
-1. Audio processor's output directory can be directly used as transcriber's input
-2. Chunk metadata from processor can inform transcription organization
-3. Both support batch processing for workflow automation
+The unified platform provides:
+- Seamless pipeline from audio input to transcription output
+- Shared configuration and workspace management
+- Consistent metadata handling across processing stages
+- State management for reliability and resume capability
 
 ## Important Development Notes
 
@@ -102,18 +100,35 @@ Key integration points:
 
 ### Module-Specific Considerations
 
-**Audio Processor**:
+**Audio Processing**:
 - The 25-second silence detection is calibrated for specific use cases - maintain this threshold
 - FLAC optimization settings (16kHz, mono) are chosen for speech transcription compatibility
 - File organization (moving to processed/) helps manage large batches
 
-**AI Transcriber**:
+**AI Transcription**:
 - Model selection affects both speed and quality - Google Gemini is currently most reliable
 - System prompts in `config/prompts.toml` can be customized per project needs
 - Project-based organization allows parallel transcription workflows
 
-### Future Integration Opportunities
-1. Create a unified CLI that chains both operations
-2. Pass chunk metadata from processor to transcriber for enhanced organization
-3. Implement shared configuration for common settings
-4. Add progress tracking across the full pipeline
+### Testing
+```bash
+# Run all tests
+cd neuravox
+pytest
+
+# Run specific test modules
+pytest tests/unit/test_config.py
+pytest tests/integration/test_pipeline.py
+
+# Run with coverage
+pytest --cov=src/neuravox
+```
+
+### Linting and Formatting
+```bash
+# Check code style
+ruff check .
+
+# Format code
+ruff format .
+```

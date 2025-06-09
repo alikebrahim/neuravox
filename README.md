@@ -31,7 +31,6 @@ A unified platform for audio processing and AI-powered transcription, combining 
 
 ### Additional Features
 
-- **Backward Compatibility**: Original module CLIs preserved
 - **Flexible Configuration**: Environment variables, YAML files, and defaults
 - **Progress Tracking**: Real-time updates with time estimates
 - **Input Validation**: File format and API key verification
@@ -251,29 +250,33 @@ export TRANSCRIPTION_DEFAULT_MODEL="openai-whisper"
 
 ```
 neuravox/
-├── modules/               # Core functionality
-│   ├── processor/         # Audio processing module
-│   │   ├── audio_splitter.py      # Silence detection & splitting
-│   │   ├── audio_splitter_cli.py  # Original CLI (preserved)
-│   │   └── metadata_output.py     # Metadata generation
-│   ├── transcriber/       # Transcription module
-│   │   ├── engine.py              # Core transcription engine
-│   │   ├── models/                # AI model implementations
-│   │   └── cli.py                 # Original CLI (preserved)
-│   └── shared/            # Shared components
-│       ├── config.py              # Configuration management
-│       ├── metadata.py            # Metadata structures
-│       ├── progress.py            # Progress tracking
-│       └── file_utils.py          # File utilities
-├── core/                  # Pipeline orchestration
-│   ├── pipeline.py                # Main workflow orchestrator
-│   ├── state_manager.py           # SQLite state tracking
-│   └── exceptions.py              # Custom exceptions
-├── cli/                   # Command-line interface
-│   └── main.py                    # Unified CLI
+├── neuravox.py            # Main entry point
+├── src/                   # Source code
+│   └── neuravox/
+│       ├── cli/           # Command-line interface
+│       │   └── main.py            # Unified CLI
+│       ├── core/          # Pipeline orchestration
+│       │   ├── pipeline.py        # Main workflow orchestrator
+│       │   ├── state_manager.py   # SQLite state tracking
+│       │   └── exceptions.py      # Custom exceptions
+│       ├── processor/     # Audio processing module
+│       │   ├── audio_splitter.py  # Silence detection & splitting
+│       │   ├── cli.py             # Processor CLI
+│       │   └── metadata_output.py # Metadata generation
+│       ├── transcriber/   # Transcription module
+│       │   ├── engine.py          # Core transcription engine
+│       │   ├── models/            # AI model implementations
+│       │   └── cli.py             # Transcriber CLI
+│       └── shared/        # Shared components
+│           ├── config.py          # Configuration management
+│           ├── metadata.py        # Metadata structures
+│           ├── progress.py        # Progress tracking
+│           └── file_utils.py      # File utilities
 ├── config/                # Configuration files
 │   ├── default.yaml               # Default settings
 │   └── prompts.toml               # AI prompts
+├── scripts/               # Setup and utility scripts
+│   └── setup.sh                   # Installation script
 ├── tests/                 # Test suite
 │   ├── unit/                      # Unit tests
 │   ├── integration/               # Integration tests
@@ -411,27 +414,10 @@ mypy modules/ core/ cli/
 
 MIT License - see LICENSE file for details.
 
-## Module-Specific Usage (Legacy)
-
-The platform integrates two previously standalone modules that can still be used independently:
-
-### Audio Processor Module
-```bash
-cd audio_processor
-uv run python audio_splitter_cli.py process --interactive
-```
-
-### AI Transcriber Module  
-```bash
-cd ai_transcriber
-audio-transcriber interactive
-```
-
-For new projects, use the unified `neuravox` command instead.
 
 ## Acknowledgments
 
-- Built on the foundations of `audio_processor` and `ai_transcriber` modules
+- Built with a modular architecture for audio processing and transcription
 - Uses librosa for audio processing
 - Integrates with Google, OpenAI APIs, and Local Whisper
 - Rich CLI powered by Typer and Rich libraries
