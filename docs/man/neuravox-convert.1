@@ -1,0 +1,82 @@
+.TH NEURAVOX-CONVERT 1 "January 2025" "Version 1.0.0" "Neuravox"
+.SH NAME
+neuravox convert \- Convert audio files to different formats
+.SH SYNOPSIS
+.B neuravox convert
+[\fIOPTIONS\fR] [\fIFILES\fR]...
+.SH DESCRIPTION
+The
+.B convert
+command converts audio files between different formats with optional quality
+and sample rate adjustments. It supports common audio formats and provides
+options for audio normalization.
+.PP
+If no files are specified, the command runs in interactive mode, allowing you to select
+files from the workspace directories.
+.SH OPTIONS
+.TP
+.BR \-f ", " \-\-format " \fITEXT\fR"
+Target format for conversion (default: flac)
+.TP
+.BR \-q ", " \-\-quality " \fITEXT\fR"
+Quality setting for the target format
+.TP
+.BR \-\-sample\-rate " \fIINTEGER\fR"
+Target sample rate in Hz
+.TP
+.BR \-\-normalize
+Normalize audio levels during conversion
+.TP
+.BR \-c ", " \-\-config " \fIPATH\fR"
+Configuration file path
+.TP
+.BR \-\-help
+Show help message and exit
+.SH ARGUMENTS
+.TP
+.I FILES
+Audio files to convert. Supports multiple files and wildcards.
+Accepted formats: MP3, WAV, FLAC, M4A, OGG, OPUS, WMA, AAC, MP4
+.SH SUPPORTED FORMATS
+.TP
+.B flac
+Free Lossless Audio Codec (default)
+.TP
+.B wav
+Waveform Audio File Format
+.TP
+.B mp3
+MPEG-1 Audio Layer III
+.SH EXAMPLES
+.TP
+Convert files to FLAC (default):
+.B neuravox convert audio1.mp3 audio2.wav
+.TP
+Convert to WAV format:
+.B neuravox convert --format wav audio.mp3
+.TP
+Convert with custom sample rate:
+.B neuravox convert --format flac --sample-rate 44100 audio.mp3
+.TP
+Convert with normalization:
+.B neuravox convert --normalize --format wav audio.mp3
+.TP
+Use custom config:
+.B neuravox convert --config /path/to/config.yaml audio.mp3
+.SH OUTPUT
+Converted files are saved in the same directory as the original files with
+the new file extension.
+.SH NOTES
+.IP \(bu 2
+FLAC provides lossless compression
+.IP \(bu 2
+MP3 provides lossy compression with smaller file sizes
+.IP \(bu 2
+WAV provides uncompressed audio with larger file sizes
+.IP \(bu 2
+Normalization adjusts audio levels to a standard range
+.SH SEE ALSO
+.BR neuravox (1),
+.BR neuravox-process (1)
+.SH BUGS
+Report bugs at: https://github.com/alikebrahim/neuravox/issues

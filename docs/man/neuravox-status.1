@@ -1,0 +1,36 @@
+.TH NEURAVOX-STATUS 1 "January 2025" "Version 1.0.0" "Neuravox"
+.SH NAME
+neuravox status \- Show basic pipeline status
+.SH SYNOPSIS
+.B neuravox status
+[\fIOPTIONS\fR]
+.SH DESCRIPTION
+The
+.B status
+command displays basic information about the current state of the
+audio processing pipeline and workspace.
+.SH OPTIONS
+.TP
+.BR \-c ", " \-\-config " \fIPATH\fR"
+Configuration file path
+.TP
+.BR \-\-help
+Show help message and exit
+.SH EXAMPLES
+.TP
+Show basic status:
+.B neuravox status
+.TP
+Use custom config file:
+.B neuravox status --config /path/to/config.yaml
+.SH NOTES
+.IP \(bu 2
+The status command provides basic pipeline information
+.IP \(bu 2
+Detailed status features are not currently implemented
+.SH SEE ALSO
+.BR neuravox (1),
+.BR neuravox-process (1),
+.BR neuravox-resume (1)
+.SH BUGS
+Report bugs at: https://github.com/alikebrahim/neuravox/issues

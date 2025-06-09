@@ -1,0 +1,106 @@
+.TH NEURAVOX-PROCESS 1 "January 2025" "Version 1.0.0" "Neuravox"
+.SH NAME
+neuravox process \- Audio processing only
+.SH SYNOPSIS
+.B neuravox process
+[\fIOPTIONS\fR] [\fIFILES\fR]...
+.SH DESCRIPTION
+The
+.B process
+command handles audio processing only:
+.IP 1. 3
+Detects silence gaps of 25+ seconds and splits audio into chunks
+.IP 2. 3
+Optimizes chunks as FLAC files (16kHz, mono)
+.IP 3. 3
+Saves outputs with processing metadata
+.PP
+If no files are specified, the command runs in interactive mode, allowing you to select
+files from the workspace input directory.
+.SH OPTIONS
+.TP
+.BR \-i ", " \-\-interactive
+Run in interactive mode. Shows a table of available files and allows selection.
+This is automatically enabled if no files are specified.
+.TP
+.BR \-\-silence\-threshold " \fIFLOAT\fR"
+Volume threshold for silence detection (default: varies by configuration)
+.TP
+.BR \-\-min\-silence " \fIFLOAT\fR"
+Minimum silence duration in seconds for splitting (default: varies by configuration)
+.TP
+.BR \-\-format " \fITEXT\fR"
+Output format for chunks (flac, wav, mp3)
+.TP
+.BR \-c ", " \-\-config " \fIPATH\fR"
+Configuration file path
+.TP
+.BR \-\-help
+Show help message and exit
+.SH ARGUMENTS
+.TP
+.I FILES
+Audio files to process. Supports multiple files and wildcards.
+Accepted formats: MP3, WAV, FLAC, M4A, OGG, OPUS, WMA, AAC, MP4
+.SH EXAMPLES
+.TP
+Process files interactively:
+.B neuravox process --interactive
+.TP
+Process specific files:
+.B neuravox process audio1.mp3 audio2.wav
+.TP
+Process with custom silence settings:
+.B neuravox process --silence-threshold 0.05 --min-silence 10.0 audio.mp3
+.TP
+Process with custom format:
+.B neuravox process --format wav audio.mp3
+.TP
+Process with custom config:
+.B neuravox process --config /path/to/config.yaml audio.mp3
+.TP
+Process with interactive mode:
+.B neuravox process -i
+.SH OUTPUT
+Processed files are organized in the workspace:
+.TP
+.I ~/neuravox.workspace/processed/{file_id}/
+Contains audio chunks (chunk_000.flac, chunk_001.flac, etc.) and processing metadata
+.SH METADATA FILES
+.TP
+.I processing_metadata.json
+Details about audio processing including chunk timings and parameters
+.TP
+.I transcription_metadata.json
+Transcription details including model used, timestamps, and word count
+.TP
+.I metadata_manifest.json
+Combined metadata linking all generated files
+.SH ERROR HANDLING
+The command validates:
+.IP \(bu 2
+File existence and format
+.IP \(bu 2
+API keys for selected model
+.IP \(bu 2
+Available disk space
+.IP \(bu 2
+File size (warns for files >1GB)
+.PP
+Failed files can be resumed using
+.BR neuravox-resume (1)
+.SH NOTES
+.IP \(bu 2
+The 25-second silence threshold is optimized for podcasts and lectures
+.IP \(bu 2
+Large files may take significant time to process
+.IP \(bu 2
+Transcription quality varies by model and audio quality
+.IP \(bu 2
+Network connection required for cloud-based models
+.SH SEE ALSO
+.BR neuravox (1),
+.BR neuravox-status (1),
+.BR neuravox-resume (1)
+.SH BUGS
+Report bugs at: https://github.com/alikebrahim/neuravox/issues

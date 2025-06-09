@@ -1,0 +1,55 @@
+.TH NEURAVOX-PIPELINE 1 "January 2025" "Version 1.0.0" "Neuravox"
+.SH NAME
+neuravox pipeline \- Full workflow (process + transcribe)
+.SH SYNOPSIS
+.B neuravox pipeline
+[\fIOPTIONS\fR] [\fIFILES\fR]...
+.SH DESCRIPTION
+The
+.B pipeline
+command runs the complete workflow: audio processing followed by transcription.
+.IP 1. 3
+Detects silence gaps of 25+ seconds and splits audio into chunks
+.IP 2. 3
+Optimizes chunks as FLAC files (16kHz, mono)
+.IP 3. 3
+Transcribes each chunk using the specified AI model
+.IP 4. 3
+Combines transcripts with timing information
+.IP 5. 3
+Saves all outputs with comprehensive metadata
+.SH OPTIONS
+.TP
+.BR \-m ", " \-\-model " " \fIMODEL\fR
+Transcription model to use. Examples: google-gemini, openai-whisper, whisper-base, whisper-turbo.
+.TP
+.BR \-i ", " \-\-interactive
+Run in interactive mode. Shows available files for processing.
+.TP
+.BR \-\-help
+Show help message and exit
+.SH ARGUMENTS
+.TP
+.I FILES
+Audio files to process through the complete pipeline.
+.SH EXAMPLES
+.TP
+Run pipeline interactively:
+.B neuravox pipeline -i
+.TP
+Process with specific model:
+.B neuravox pipeline --model openai-whisper podcast.mp3
+.TP
+Process multiple files:
+.B neuravox pipeline audio1.mp3 audio2.wav
+.SH OUTPUT
+.TP
+.I ~/neuravox.workspace/processed/{file_id}/
+Contains audio chunks and processing metadata
+.TP
+.I ~/neuravox.workspace/transcribed/{file_id}/
+Contains transcripts and transcription metadata
+.SH SEE ALSO
+.BR neuravox (1),
+.BR neuravox-process (1),
+.BR neuravox-transcribe (1)

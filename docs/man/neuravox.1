@@ -1,0 +1,111 @@
+.TH NEURAVOX 1 "January 2025" "Version 1.0.0" "Neuravox"
+.SH NAME
+neuravox \- Audio processing and transcription tool
+.SH SYNOPSIS
+.B neuravox
+[\fIOPTIONS\fR] \fICOMMAND\fR [\fIARGS\fR]...
+.SH DESCRIPTION
+.B neuravox
+is an audio processing wrapper around FFmpeg and transcription APIs. It splits audio
+on silence and transcribes using various models (OpenAI, Google, local Whisper).
+.SH COMMANDS
+.TP
+.B init
+Initialize workspace and create directory structure
+.TP
+.B process
+Audio processing only
+.TP
+.B transcribe
+Transcription only
+.TP
+.B convert
+Format conversion
+.TP
+.B pipeline
+Full workflow (process + transcribe)
+.TP
+.B status
+Show basic pipeline status
+.TP
+.B resume
+Resume processing of failed files
+.TP
+.B config
+View configuration settings
+.SH GLOBAL OPTIONS
+.TP
+.BR \-\-help
+Show help message and exit
+.TP
+.BR \-\-version
+Show version number and exit
+.SH EXAMPLES
+.TP
+Initialize workspace in default location:
+.B neuravox init
+.TP
+Process audio interactively:
+.B neuravox process -i
+.TP
+Full pipeline interactively:
+.B neuravox pipeline -i
+.TP
+Transcribe with specific model:
+.B neuravox transcribe --model google-gemini
+.TP
+Check processing status:
+.B neuravox status
+.TP
+Resume failed jobs:
+.B neuravox resume
+.SH ENVIRONMENT
+.TP
+.B GOOGLE_API_KEY
+API key for Google Gemini transcription service
+.TP
+.B OPENAI_API_KEY
+API key for OpenAI Whisper transcription service
+.TP
+.B NEURAVOX_BASE_PATH
+Override default workspace base path
+.TP
+.B AUDIO_PROCESSING_MIN_SILENCE_DURATION
+Override minimum silence duration (default: 25.0 seconds)
+.TP
+.B TRANSCRIPTION_DEFAULT_MODEL
+Override default transcription model
+.SH FILES
+.TP
+.I ~/workspace/
+Default workspace directory containing input/, processed/, and transcribed/ subdirectories
+.TP
+.I ~/.neuravox/config.yaml
+User configuration file
+.TP
+.I ./config.yaml
+Project configuration file
+.SH EXIT STATUS
+.TP
+.B 0
+Successful completion
+.TP
+.B 1
+General error or invalid usage
+.TP
+.B 2
+Configuration error or missing API keys
+.SH SEE ALSO
+.BR neuravox-init (1),
+.BR neuravox-process (1),
+.BR neuravox-transcribe (1),
+.BR neuravox-convert (1),
+.BR neuravox-status (1),
+.BR neuravox-resume (1),
+.BR neuravox-config (1)
+.SH BUGS
+Report bugs at: https://github.com/alikebrahim/neuravox/issues
+.SH AUTHOR
+Neuravox Contributors
+.SH COPYRIGHT
+Copyright (c) 2025. Licensed under the MIT License.

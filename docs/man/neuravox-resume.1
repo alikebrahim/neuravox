@@ -1,0 +1,89 @@
+.TH NEURAVOX-RESUME 1 "January 2025" "Version 1.0.0" "Neuravox"
+.SH NAME
+neuravox resume \- Resume failed pipeline processing
+.SH SYNOPSIS
+.B neuravox resume
+[\fIOPTIONS\fR]
+.SH DESCRIPTION
+The
+.B resume
+command identifies and resumes processing of previously failed files in the
+pipeline. It can recover from interruptions during audio processing or
+transcription steps.
+.SH OPTIONS
+.TP
+.BR \-m ", " \-\-model " \fITEXT\fR"
+Transcription model to use for resumed transcription
+.TP
+.BR \-c ", " \-\-config " \fIPATH\fR"
+Configuration file path
+.TP
+.BR \-\-help
+Show help message and exit
+.SH DESCRIPTION
+The resume command scans the workspace for files that failed during previous
+processing attempts and restarts them from the appropriate stage. This is
+useful when processing is interrupted due to:
+.IP \(bu 2
+Network connectivity issues with cloud transcription services
+.IP \(bu 2
+System resource limitations
+.IP \(bu 2
+API rate limits or temporary service unavailability
+.IP \(bu 2
+Manual interruption of processing
+.SH AVAILABLE MODELS
+.TP
+.B google-gemini
+Google Gemini 2.0 Flash model (requires GOOGLE_API_KEY)
+.TP
+.B openai-whisper
+OpenAI Whisper API (requires OPENAI_API_KEY)
+.TP
+.B whisper-base
+Local Whisper base model
+.TP
+.B whisper-turbo
+Local Whisper turbo model
+.SH EXAMPLES
+.TP
+Resume with default model:
+.B neuravox resume
+.TP
+Resume with specific model:
+.B neuravox resume --model google-gemini
+.TP
+Resume with custom config:
+.B neuravox resume --config /path/to/config.yaml
+.SH RECOVERY PROCESS
+The resume command performs the following steps:
+.IP 1. 3
+Scans workspace for incomplete or failed processing
+.IP 2. 3
+Identifies the last successful stage for each file
+.IP 3. 3
+Restarts processing from the appropriate point
+.IP 4. 3
+Updates processing metadata and status
+.SH ENVIRONMENT VARIABLES
+.TP
+.B GOOGLE_API_KEY
+Required for Google Gemini model
+.TP
+.B OPENAI_API_KEY
+Required for OpenAI Whisper model
+.SH NOTES
+.IP \(bu 2
+Resume checks both processing and transcription failures
+.IP \(bu 2
+Successfully completed files are not reprocessed
+.IP \(bu 2
+Use 'neuravox status' to check for failed files before resuming
+.IP \(bu 2
+Network connection required for cloud-based models
+.SH SEE ALSO
+.BR neuravox (1),
+.BR neuravox-status (1),
+.BR neuravox-pipeline (1)
+.SH BUGS
+Report bugs at: https://github.com/alikebrahim/neuravox/issues

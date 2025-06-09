@@ -1,0 +1,93 @@
+.TH NEURAVOX-TRANSCRIBE 1 "January 2025" "Version 1.0.0" "Neuravox"
+.SH NAME
+neuravox transcribe \- Transcribe audio files using various AI models
+.SH SYNOPSIS
+.B neuravox transcribe
+[\fIOPTIONS\fR] [\fIFILES\fR]...
+.SH DESCRIPTION
+The
+.B transcribe
+command transcribes audio files using various AI transcription models including
+Google Gemini, OpenAI Whisper, and local Whisper models. It can process either
+original audio files or previously processed audio chunks.
+.PP
+If no files are specified, the command runs in interactive mode, allowing you to select
+files from the workspace directories.
+.SH OPTIONS
+.TP
+.BR \-m ", " \-\-model " \fITEXT\fR"
+Transcription model to use (google-gemini, openai-whisper, whisper-base, etc.)
+.TP
+.BR \-i ", " \-\-interactive
+Run in interactive mode. Shows a table of available files and allows selection.
+This is automatically enabled if no files are specified.
+.TP
+.BR \-\-chunks
+Process chunks separately instead of full files
+.TP
+.BR \-\-timestamps
+Include timestamps in the transcription output
+.TP
+.BR \-c ", " \-\-config " \fIPATH\fR"
+Configuration file path
+.TP
+.BR \-\-help
+Show help message and exit
+.SH ARGUMENTS
+.TP
+.I FILES
+Audio files to transcribe. Supports multiple files and wildcards.
+Accepted formats: MP3, WAV, FLAC, M4A, OGG, OPUS, WMA, AAC, MP4
+.SH AVAILABLE MODELS
+.TP
+.B google-gemini
+Google Gemini 2.0 Flash model (requires GOOGLE_API_KEY)
+.TP
+.B openai-whisper
+OpenAI Whisper API (requires OPENAI_API_KEY)
+.TP
+.B whisper-base
+Local Whisper base model
+.TP
+.B whisper-turbo
+Local Whisper turbo model
+.SH EXAMPLES
+.TP
+Transcribe files interactively:
+.B neuravox transcribe --interactive
+.TP
+Transcribe specific files with a model:
+.B neuravox transcribe --model google-gemini audio1.mp3 audio2.wav
+.TP
+Transcribe chunks with timestamps:
+.B neuravox transcribe --chunks --timestamps --model openai-whisper
+.TP
+Use custom config:
+.B neuravox transcribe --config /path/to/config.yaml audio.mp3
+.SH OUTPUT
+Transcribed files are organized in the workspace:
+.TP
+.I ~/workspace/transcribed/{file_id}/
+Contains transcripts and transcription metadata
+.SH ENVIRONMENT VARIABLES
+.TP
+.B GOOGLE_API_KEY
+Required for Google Gemini model
+.TP
+.B OPENAI_API_KEY
+Required for OpenAI Whisper model
+.SH NOTES
+.IP \(bu 2
+Local Whisper models do not require API keys
+.IP \(bu 2
+Network connection required for cloud-based models
+.IP \(bu 2
+Transcription quality varies by model and audio quality
+.IP \(bu 2
+Large files may take significant time to transcribe
+.SH SEE ALSO
+.BR neuravox (1),
+.BR neuravox-process (1),
+.BR neuravox-pipeline (1)
+.SH BUGS
+Report bugs at: https://github.com/alikebrahim/neuravox/issues

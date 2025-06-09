@@ -1,0 +1,110 @@
+.TH NEURAVOX-CONFIG 1 "January 2025" "Version 1.0.0" "Neuravox"
+.SH NAME
+neuravox config \- View configuration settings
+.SH SYNOPSIS
+.B neuravox config
+[\fIOPTIONS\fR]
+.SH DESCRIPTION
+The
+.B config
+command displays current configuration settings for the audio
+workflow platform. Configuration follows a hierarchy: environment variables
+override config files, which override defaults.
+.SH OPTIONS
+.TP
+.BR \-s ", " \-\-show
+Display current configuration settings (default behavior)
+.TP
+.BR \-e ", " \-\-edit
+Open configuration file in default editor (not yet implemented)
+.TP
+.BR \-c ", " \-\-config " \fIPATH\fR"
+Configuration file path
+.TP
+.BR \-\-help
+Show help message and exit
+.SH CONFIGURATION KEYS
+.SS Workspace Settings
+.TP
+.B workspace.base_path
+Base directory for all operations (default: ~/neuravox)
+.TP
+.B workspace.input_dir
+Subdirectory for input files (default: input)
+.TP
+.B workspace.processed_dir
+Subdirectory for processed chunks (default: processed)
+.TP
+.B workspace.transcribed_dir
+Subdirectory for transcripts (default: transcribed)
+.SS Processing Settings
+.TP
+.B processing.silence_threshold
+Volume threshold for silence detection (default: 0.01)
+.TP
+.B processing.min_silence_duration
+Minimum silence duration in seconds (default: 25.0)
+.TP
+.B processing.min_chunk_duration
+Minimum chunk duration in seconds (default: 5.0)
+.TP
+.B processing.sample_rate
+Output sample rate in Hz (default: 16000)
+.TP
+.B processing.output_format
+Output format for chunks (default: flac)
+.TP
+.B processing.normalize
+Normalize audio volume (default: true)
+.SS Transcription Settings
+.TP
+.B transcription.default_model
+Default transcription model (default: google-gemini)
+.TP
+.B transcription.max_concurrent
+Maximum concurrent transcriptions (default: 3)
+.TP
+.B transcription.chunk_processing
+Process chunks separately (default: true)
+.TP
+.B transcription.combine_chunks
+Combine chunks into single transcript (default: true)
+.SH EXAMPLES
+.TP
+Show current configuration:
+.B neuravox config
+.TP
+Show current configuration explicitly:
+.B neuravox config --show
+.TP
+Use custom config file:
+.B neuravox config --config /path/to/config.yaml
+.SH FILES
+.TP
+.I ~/.config/neuravox/config.yaml
+User configuration file
+.TP
+.I /etc/neuravox/config.yaml
+System-wide configuration file
+.TP
+.I ./config/default.yaml
+Default configuration shipped with the application
+.SH ENVIRONMENT
+Configuration values can be overridden using environment variables:
+.TP
+.B NEURAVOX_{SECTION}_{KEY}
+Override any configuration value, e.g., NEURAVOX_PROCESSING_MIN_SILENCE_DURATION=30.0
+.SH NOTES
+.IP \(bu 2
+The config command currently only supports viewing configuration
+.IP \(bu 2
+Configuration modification must be done by editing the YAML file directly
+.IP \(bu 2
+API keys should be set via environment variables, not config files
+.IP \(bu 2
+Use 'neuravox config' to verify current settings
+.SH SEE ALSO
+.BR neuravox (1),
+.BR neuravox-init (1)
+.SH BUGS
+Report bugs at: https://github.com/alikebrahim/neuravox/issues
