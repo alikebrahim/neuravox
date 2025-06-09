@@ -4,23 +4,43 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Neuravox is a neural audio processing platform that provides:
+Neuravox is a personal neural audio processing tool that:
 1. **Audio Processing**: Sophisticated silence-based audio splitting and optimization
 2. **AI Transcription**: Multi-model transcription with chunk support
 
-The platform provides a seamless pipeline for processing audio files through both stages.
+The platform is designed as a "clone-and-run" tool installed to `~/.neuravox`.
+
+## Project Structure
+
+```
+neuravox/
+├── neuravox.py           # Main entry point
+├── src/neuravox/         # Source code
+│   ├── cli/              # CLI interface
+│   ├── core/             # Pipeline orchestration
+│   ├── processor/        # Audio processing
+│   ├── transcriber/      # Transcription engine
+│   └── shared/           # Shared utilities
+├── config/               # Default configuration
+├── scripts/              # Setup and utility scripts
+└── workspace/            # User data (symlinked to ~/neuravox.workspace)
+```
 
 ## Common Development Commands
 
-### Setup and Installation
+### Setup for Development
 ```bash
-# Create virtual environment and install
+# Clone to development location (not ~/.neuravox)
+git clone <repo> ~/dev/neuravox
+cd ~/dev/neuravox
+
+# Create development environment
 uv venv
 source .venv/bin/activate
-uv pip install -e .
+uv sync
 
-# Initialize workspace
-neuravox init
+# Run from source
+python neuravox.py --help
 ```
 
 ### Running the Platform

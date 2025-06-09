@@ -2,327 +2,173 @@
 
 ## Overview
 
-Neuravox is a standalone neural audio processing and transcription platform. This guide covers the complete installation process, environment setup, and data initialization.
+Neuravox is a personal neural audio processing and transcription tool designed to be cloned and run from `~/.neuravox`. This guide covers the simple installation process.
 
 ## System Requirements
 
 - **Python**: 3.12 or higher
-- **Operating System**: Linux, macOS, or Windows
+- **Operating System**: Linux (primary support)
 - **Memory**: 4GB RAM minimum (8GB recommended for large files)
 - **Storage**: 10GB free space for workspace and dependencies
-- **Audio Dependencies**: FFmpeg (required for audio processing and Whisper)
-  - Linux: `sudo apt install ffmpeg`
-  - macOS: `brew install ffmpeg`
-  - Windows: Automatically handled by ffmpeg-python package
+- **Package Manager**: [uv](https://astral.sh/uv) (required)
+- **Audio Dependencies**: FFmpeg (required for audio processing)
+  - Linux: `sudo apt install ffmpeg` or `sudo dnf install ffmpeg`
 
-## Virtual Environment Handling
+## Installation
 
-When you run `neuravox` from the command line, the virtual environment is handled differently depending on your installation method:
+### 1. Install Prerequisites
 
-### Method 1: Quick Install with pipx (Simplest)
-```bash
-./scripts/quick-install.sh
-```
-- **One command installation** - handles everything
-- **Automatic venv management** - pipx creates and manages the venv
-- **No manual activation needed** - just run `neuravox`
-- **Isolated from system Python** - no conflicts
-- **Easy updates**: `pipx upgrade neuravox`
-
-### Method 2: Interactive Installation (Recommended)
-```bash
-./scripts/install-system.sh
-```
-- **Modern TUI installer** - uses Gum/whiptail for beautiful menus
-- **Auto-detects your shell** - configures .bashrc or .zshrc automatically
-- **Prefers uv** - uses fast uv package manager, falls back to pip
-- **Choose installation type**:
-  - User Install (~/.neuravox) - Recommended
-  - System Install (/opt/neuravox) - Requires sudo
-  - Development Mode - For contributors
-- **Creates wrapper script** - no manual venv activation needed
-
-### Method 3: Development Installation
-```bash
-cd neuravox
-uv venv
-source .venv/bin/activate
-uv pip install -e .
-```
-- **Requires manual activation** each time
-- **Best for development** and testing
-- **Editable installation** - changes take effect immediately
-
-### Method 4: Direct pip Install
-```bash
-# Not recommended - installs to active environment
-pip install neuravox
-```
-- **No automatic venv** - uses current environment
-- **Risk of conflicts** with system packages
-- **Requires manual venv management**
-
-## Installation Strategy
-
-### 1. Project Structure
-
-```
-neuravox/
-├── .venv/                 # Virtual environment (created during install)
-├── modules/               # Core functionality
-├── cli/                   # Command-line interface
-├── core/                  # Business logic and state management
-├── config/                # Default configurations
-├── tests/                 # Test suite
-└── pyproject.toml         # Unified dependency management
-```
-
-### 2. Virtual Environment Management
-
-Neuravox uses `uv` for fast, reliable virtual environment management:
+First, install `uv` if you don't have it:
 
 ```bash
-# Option A: Using uv (recommended)
-cd neuravox
-uv venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-uv pip install -e .
-
-# Option B: Using standard venv
-cd neuravox
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-pip install -e .
+# Install uv (Python package manager)
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-### 3. Installation Process
+Install FFmpeg:
 
-#### Step 1: Clone or Download
 ```bash
-# If using git
-git clone <repository-url>
-cd neuravox
+# Ubuntu/Debian
+sudo apt install ffmpeg
 
-# Or download and extract the archive
-unzip neuravox.zip
-cd neuravox
+# Fedora
+sudo dnf install ffmpeg
+
+# Arch
+sudo pacman -S ffmpeg
 ```
 
-#### Step 2: Create Virtual Environment
+### 2. Clone and Setup
+
 ```bash
-# Using uv (faster)
-uv venv
-source .venv/bin/activate
+# Clone to the required location
+git clone <repository-url> ~/.neuravox
 
-# Or using standard Python
-python3.12 -m venv .venv
-source .venv/bin/activate
+# Run setup
+cd ~/.neuravox
+./scripts/setup.sh
 ```
 
-#### Step 3: Install Dependencies
+The setup script will:
+- Create a virtual environment using `uv`
+- Install all dependencies
+- Create a launcher at `~/.local/bin/neuravox`
+- Create workspace symlink at `~/neuravox.workspace`
+
+### 3. Configure PATH
+
+If `~/.local/bin` is not in your PATH, add it:
+
 ```bash
-# Editable install for development
-uv pip install -e .
+# For bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
 
-# Or for production use
-uv pip install .
+# For zsh
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
 ```
 
-#### Step 4: Initialize Workspace
+### 4. Configure API Keys (Optional)
+
+For AI transcription features, set your API keys:
+
 ```bash
-neuravox init
-```
-
-## Data Initialization
-
-### SQLite Database
-
-The platform uses SQLite for state management, which is automatically initialized:
-
-**Location**: `~/neuravox/.pipeline_state.db`
-
-**Schema**:
-- `files`: Track processed files and their status
-- `processing_stages`: Record processing history
-- `chunks`: Store audio chunk metadata
-
-**Initialization**: Automatic on first use when you run `neuravox init`
-
-### Workspace Structure
-
-The default workspace is created at `~/neuravox/` with:
-
-```
-~/neuravox/
-├── .pipeline_state.db     # SQLite database (auto-created)
-├── .neuravox.yaml        # User configuration (created on init)
-├── input/                # Place audio files here
-├── processed/            # Original files moved here after processing
-├── output/               # Processing results
-│   └── <project-name>/
-│       ├── chunks/       # Audio chunks
-│       ├── transcripts/  # Individual transcriptions
-│       └── metadata/     # Processing metadata
-└── logs/                 # Application logs
-```
-
-### Configuration Files
-
-1. **User Config**: `~/.config/neuravox/config.yaml`
-   - Created on first run
-   - Stores user preferences
-   - Overrides defaults
-
-2. **Environment File**: `.env` (in project root)
-   - API keys and secrets
-   - Never committed to version control
-
-3. **Default Config**: `config/default.yaml`
-   - Ships with the platform
-   - Reference configuration
-
-## API Key Configuration
-
-### Method 1: Environment Variables
-```bash
+# Add to your shell configuration
 export GOOGLE_API_KEY="your-google-api-key"
 export OPENAI_API_KEY="your-openai-api-key"
 ```
 
-### Method 2: .env File
-```bash
-# Create .env in project root
-echo "GOOGLE_API_KEY=your-google-api-key" >> .env
-echo "OPENAI_API_KEY=your-openai-api-key" >> .env
+Or create `~/.neuravox/config/user.yaml`:
+
+```yaml
+api_keys:
+  google_gemini: "your-google-api-key"
+  openai: "your-openai-api-key"
 ```
 
-### Method 3: Interactive Setup
+## Usage
+
+### Initialize Workspace
+
 ```bash
-neuravox config
-# Follow prompts to enter API keys
+neuravox init
 ```
 
-## Installation Verification
+### Process Audio Files
 
-### 1. Check Installation
+1. Place audio files in: `~/neuravox.workspace/input/`
+2. Run interactive processing:
+
 ```bash
-# Verify command is available
-neuravox --version
-
-# Check configuration
-neuravox config --show
-```
-
-### 2. Run Tests
-```bash
-# Run unit tests
-pytest tests/unit
-
-# Run integration tests (requires API keys)
-pytest tests/integration
-```
-
-### 3. Process Test Audio
-```bash
-# Download test audio
-wget https://example.com/sample-audio.mp3 -O ~/neuravox/input/test.mp3
-
-# Process interactively
 neuravox process --interactive
 ```
 
-## Dependency Management
+### Check Status
 
-All dependencies are managed through a single `pyproject.toml`:
+```bash
+neuravox status
+```
 
-**Core Dependencies**:
-- Audio Processing: librosa, soundfile, scipy, numpy
-- AI/ML: google-genai, openai, ollama
-- CLI: typer[all], rich, tqdm
-- Data: pydantic, sqlalchemy
-- Utils: pyyaml, toml, python-dotenv
+## Updating
 
-**Development Dependencies**:
-- Testing: pytest, pytest-asyncio
-- Linting: ruff
-- Type Checking: mypy (optional)
+To update Neuravox:
 
-## Platform-Specific Notes
+```bash
+cd ~/.neuravox
+git pull
 
-### Linux
-- FFmpeg usually available via package manager
-- Use system Python 3.12+ or pyenv
+# Update dependencies if needed
+uv sync
+```
 
-### macOS
-- Install FFmpeg via Homebrew: `brew install ffmpeg`
-- Python 3.12 via Homebrew or pyenv
+## Workspace Structure
 
-### Windows
-- FFmpeg binaries included via ffmpeg-python
-- Use Python from python.org or Microsoft Store
+Your workspace at `~/neuravox.workspace/` contains:
+
+```
+~/neuravox.workspace/
+├── input/        # Place audio files here
+├── processed/    # Split audio chunks
+└── transcribed/  # Transcription results
+```
 
 ## Troubleshooting
 
-### Common Issues
+### Command not found
 
-1. **Missing Python 3.12**
-   ```bash
-   # Install via pyenv
-   pyenv install 3.12
-   pyenv local 3.12
-   ```
+Make sure `~/.local/bin` is in your PATH:
 
-2. **FFmpeg Not Found**
-   ```bash
-   # Linux
-   sudo apt-get install ffmpeg
-   
-   # macOS
-   brew install ffmpeg
-   
-   # Windows - handled automatically
-   ```
+```bash
+echo $PATH | grep -q "$HOME/.local/bin" && echo "PATH is OK" || echo "Need to add to PATH"
+```
 
-3. **Permission Errors**
-   ```bash
-   # Ensure workspace is writable
-   chmod -R u+w ~/neuravox
-   ```
+### Permission denied
 
-4. **Database Lock Errors**
-   - Close other instances of Neuravox
-   - Check file permissions on `.pipeline_state.db`
+Make sure the launcher is executable:
+
+```bash
+chmod +x ~/.local/bin/neuravox
+```
+
+### Virtual environment issues
+
+The launcher automatically uses the correct Python from the virtual environment. You don't need to activate it manually.
 
 ## Uninstallation
 
-### Complete Removal
+To completely remove Neuravox:
+
 ```bash
-# Remove virtual environment
-rm -rf .venv
+# Remove the installation
+rm -rf ~/.neuravox
 
-# Remove workspace (caution: deletes all data)
-rm -rf ~/neuravox
+# Remove the launcher
+rm -f ~/.local/bin/neuravox
 
-# Remove user config
-rm -rf ~/.config/neuravox
+# Remove the workspace symlink
+rm -f ~/neuravox.workspace
 
-# Uninstall command (if installed globally)
-pip uninstall neuravox
+# Optionally remove workspace data
+rm -rf ~/.neuravox/workspace
 ```
-
-### Keep Data, Remove Installation
-```bash
-# Just remove virtual environment
-rm -rf .venv
-
-# Keep workspace and database intact
-```
-
-## Next Steps
-
-1. **Configure API Keys**: Set up at least one transcription model
-2. **Test Installation**: Run `neuravox process --help`
-3. **Process First Audio**: Try interactive mode with `neuravox process --interactive`
-4. **Explore Features**: Check available models with `neuravox list-models`
-
-For more information, see the main README.md or run `neuravox --help`.

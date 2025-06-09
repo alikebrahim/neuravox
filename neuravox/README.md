@@ -1,10 +1,10 @@
 # Neuravox
 
-Neural audio processing and transcription platform
+Personal neural audio processing and transcription tool
 
 ## Overview
 
-Neuravox is a comprehensive platform for processing and transcribing audio files. It combines intelligent audio splitting based on silence detection with multi-model AI transcription capabilities.
+Neuravox is a personal tool for processing and transcribing audio files. It combines intelligent audio splitting based on silence detection with multi-model AI transcription capabilities. Designed as a "clone-and-run" tool that lives in `~/.neuravox`.
 
 ## Features
 
@@ -26,51 +26,42 @@ Neuravox is a comprehensive platform for processing and transcribing audio files
   - Progress tracking and error recovery
   - Rich CLI interface
 
-## Installation
-
-### Quick Install (Recommended)
-```bash
-# Clone the repository
-git clone <repository-url>
-cd neuravox
-
-# Run the interactive installer
-./scripts/install-system.sh
-```
-
-The installer will:
-- Auto-detect your shell (bash/zsh/fish)
-- Use `uv` for fast installation (falls back to pip)
-- Create a global `neuravox` command
-- Initialize your workspace
-
-### Alternative: pipx Install
-```bash
-./scripts/quick-install.sh
-```
-
-### Development Install
-```bash
-# For contributors and developers
-uv venv
-source .venv/bin/activate
-uv pip install -e .
-```
-
 ## Quick Start
 
-### Interactive Mode (Recommended)
+### Prerequisites
+
+- Python 3.12+
+- [uv](https://astral.sh/uv) package manager
+- FFmpeg for audio processing
+- Linux operating system
+
+### Installation
+
 ```bash
-neuravox process --interactive
+# Install uv if you don't have it
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Clone to the required location
+git clone <repository-url> ~/.neuravox
+
+# Run setup
+cd ~/.neuravox
+./scripts/setup.sh
+
+# Add to PATH if needed
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
 ```
 
-### Direct Processing
-```bash
-# Process specific files
-neuravox process audio1.mp3 audio2.wav
+### Usage
 
-# Process with specific model
-neuravox process audio.mp3 --model google-gemini
+```bash
+# Initialize workspace
+neuravox init
+
+# Place audio files in ~/neuravox.workspace/input/
+# Then process interactively
+neuravox process --interactive
 
 # Check processing status
 neuravox status
@@ -79,83 +70,69 @@ neuravox status
 neuravox resume
 ```
 
+## Workspace Structure
+
+Your workspace at `~/neuravox.workspace/`:
+
+```
+~/neuravox.workspace/
+├── input/        # Place audio files here
+├── processed/    # Split audio chunks
+└── transcribed/  # Transcription results
+```
+
 ## Configuration
 
-Neuravox uses a hierarchical configuration system:
-1. Environment variables (highest priority)
-2. User config file (`~/.config/neuravox/config.yaml`)
-3. Default configuration
+### API Keys
 
-### Setting API Keys
-
+Set environment variables:
 ```bash
-# Via environment variables
 export GOOGLE_API_KEY="your-key"
 export OPENAI_API_KEY="your-key"
-
-# Or in .env file
-cp .env.example .env
-# Edit .env with your keys
 ```
 
-### View/Edit Configuration
+Or create `~/.neuravox/config/user.yaml`:
+```yaml
+api_keys:
+  google_gemini: "your-key"
+  openai: "your-key"
+```
+
+### Workspace Override
 
 ```bash
-neuravox config
+export NEURAVOX_WORKSPACE="/custom/path"
 ```
 
-## Workflow
+## Updating
 
-1. **Initialize**: Set up your workspace and configuration
-2. **Process**: Audio files are analyzed and split at silence gaps
-3. **Transcribe**: Each chunk is transcribed using your chosen AI model
-4. **Combine**: Chunks are merged into a complete transcript with timing
-
-## Output Structure
-
-```
-workspace/
-├── input/          # Place audio files here
-├── output/         # Processed results
-│   └── <project>/
-│       ├── chunks/     # Audio chunks
-│       ├── transcripts/# Individual transcriptions
-│       ├── combined_transcript.md
-│       └── metadata.json
-└── processed/      # Original files moved here
+```bash
+cd ~/.neuravox
+git pull
+uv sync  # Update dependencies if needed
 ```
 
-## Models
+## Architecture
 
-### Google Gemini (Recommended)
-- Fast and accurate
-- Good for long audio files
-- Requires Google API key
+Neuravox uses a modular architecture:
 
-### OpenAI Whisper API
-- High accuracy
-- Cloud-based processing
-- Requires OpenAI API key
-
-### Whisper Local
-- Complete offline operation
-- Multiple model sizes (tiny to large)
-- No API key required
-- GPU acceleration support
+- **Processor Module**: Handles audio splitting and optimization
+- **Transcriber Module**: Manages AI model interactions
+- **Core Pipeline**: Orchestrates the full workflow
+- **Shared Utilities**: Common functionality across modules
 
 ## Development
 
+For development work, clone to a different location:
+
 ```bash
-# Run tests
-pytest
-
-# Lint code
-ruff check .
-
-# Format code
-ruff format .
+git clone <repository-url> ~/dev/neuravox
+cd ~/dev/neuravox
+uv venv && source .venv/bin/activate
+uv sync
+python neuravox.py --help
 ```
 
 ## License
 
-MIT License - see LICENSE file for details
+MIT License - See LICENSE file for details
