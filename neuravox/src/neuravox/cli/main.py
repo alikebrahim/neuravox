@@ -67,10 +67,6 @@ def process(
     # Load configuration
     config = UnifiedConfig(config_path) if config_path else UnifiedConfig()
 
-    # Model will validate API keys when initialized
-
-    pipeline = AudioPipeline(config)
-
     # Enhanced interactive mode or simple processing
     if interactive:
         # Enhanced interactive flow
@@ -114,10 +110,13 @@ def process(
                 console.print("[yellow]Operation cancelled[/yellow]")
                 return
 
-        # Apply overrides to config
+        # Apply overrides to config BEFORE creating pipeline
         config = _apply_interactive_overrides(config, processing_config, transcription_config)
         model = selected_model
         files = selected_files
+        
+        # Create pipeline with final configuration
+        pipeline = AudioPipeline(config)
 
     else:
         # Simple mode: get files to process
@@ -164,6 +163,9 @@ def process(
         if not Confirm.ask("Continue with processing?"):
             console.print("[yellow]Processing cancelled[/yellow]")
             return
+            
+        # Create pipeline with original configuration for non-interactive mode
+        pipeline = AudioPipeline(config)
 
     # Process files
     async def run_pipeline():

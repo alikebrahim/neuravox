@@ -187,6 +187,16 @@ class AudioProcessor:
         self.pipeline_mode = pipeline_mode
         self.cancelled = False
         
+        # Configuration validation and logging
+        if not pipeline_mode:
+            print(f"🔧 AudioProcessor initialized:")
+            print(f"   Silence threshold: {self.silence_threshold}")
+            print(f"   Min silence duration: {self.min_silence_duration}s")
+            print(f"   Min chunk duration: {self.min_chunk_duration}s")
+            print(f"   Keep silence: {self.keep_silence}s")
+            print(f"   Sample rate: {self.sample_rate}Hz")
+            print(f"   Output format: {self.output_format}")
+        
         # Setup signal handler for graceful cancellation (not in pipeline mode)
         if not pipeline_mode:
             signal.signal(signal.SIGINT, self._signal_handler)
@@ -272,6 +282,10 @@ class AudioProcessor:
         """Stage 2: Detect silence using chunked processing"""
         progress.start_stage(2, f"Silence Detection (threshold: {self.silence_threshold:.3f}, min gap: {self.min_silence_duration}s)")
         
+        # Validate configuration is as expected
+        if not self.pipeline_mode:
+            print(f"   🔧 Using min_silence_duration: {self.min_silence_duration}s")
+        
         silence_segments = []
         
         # Process audio in chunks
@@ -313,9 +327,14 @@ class AudioProcessor:
         merged_segments = self._merge_silence_segments(silence_segments)
         
         print(f"   ✓ Found {len(merged_segments)} silence segments >= {self.min_silence_duration}s")
-        for i, (start, end) in enumerate(merged_segments, 1):
-            print(f"      Silence {i}: {start/60:.1f}m - {end/60:.1f}m ({end-start:.1f}s)")
-            progress.add_silence_segment(start, end)
+        if merged_segments:
+            print(f"   📊 Silence segments detail:")
+            for i, (start, end) in enumerate(merged_segments, 1):
+                duration = end - start
+                print(f"      Segment {i}: {start/60:.1f}m - {end/60:.1f}m ({duration:.1f}s)")
+                progress.add_silence_segment(start, end)
+        else:
+            print(f"   ℹ️  No silence >= {self.min_silence_duration}s found - audio will be processed as single chunk")
         
         return merged_segments
     

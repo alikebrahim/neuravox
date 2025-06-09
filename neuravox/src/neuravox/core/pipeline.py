@@ -34,6 +34,15 @@ class AudioPipeline:
             min_silence_duration=self.config.processing.min_silence_duration,
             pipeline_mode=True,
         )
+        
+        # Validation that configuration was applied correctly
+        if self.audio_processor.min_silence_duration != self.config.processing.min_silence_duration:
+            raise PipelineError(
+                f"Configuration mismatch: AudioProcessor has min_silence_duration="
+                f"{self.audio_processor.min_silence_duration}s but config specifies "
+                f"{self.config.processing.min_silence_duration}s"
+            )
+        
         self.transcriber = AudioTranscriber(self.config)
 
     async def process_file(self, audio_file: Path, model: Optional[str] = None) -> Dict[str, Any]:
