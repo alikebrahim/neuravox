@@ -9,6 +9,9 @@ ENV/
 env/
 .venv
 
+# uv
+uv.lock
+
 # Distribution / packaging
 .Python
 build/
@@ -90,3 +93,4 @@ Thumbs.db
 # Config overrides (keep defaults)
 config/*.yaml
 !config/default.yaml
+!neuravox/config/default.yaml

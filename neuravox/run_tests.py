@@ -11,6 +11,13 @@ import argparse
 def run_tests(test_type=None, verbose=False, generate_fixtures=False):
     """Run tests with various options"""
     
+    # Set PYTHONPATH to include src directory
+    import os
+    project_root = Path(__file__).parent
+    src_path = project_root / "src"
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(src_path)
+    
     # Generate test fixtures if requested
     if generate_fixtures:
         print("Generating test audio files...")
@@ -19,7 +26,7 @@ def run_tests(test_type=None, verbose=False, generate_fixtures=False):
             sys.executable, 
             "tests/generate_test_audio.py", 
             str(fixtures_dir)
-        ])
+        ], env=env)
         print()
     
     # Build pytest command
@@ -38,7 +45,7 @@ def run_tests(test_type=None, verbose=False, generate_fixtures=False):
     # Add coverage if available
     try:
         import pytest_cov
-        cmd.extend(["--cov=modules", "--cov=core", "--cov=cli", "--cov-report=term-missing"])
+        cmd.extend(["--cov=neuravox", "--cov-report=term-missing"])
     except ImportError:
         pass
     
@@ -46,7 +53,7 @@ def run_tests(test_type=None, verbose=False, generate_fixtures=False):
     print(f"Running command: {' '.join(cmd)}")
     print("-" * 50)
     
-    result = subprocess.run(cmd)
+    result = subprocess.run(cmd, env=env)
     return result.returncode
 
 
