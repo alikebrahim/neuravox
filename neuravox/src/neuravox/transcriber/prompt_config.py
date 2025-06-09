@@ -133,5 +133,3 @@ Provide only the transcription."""
         }
 
 
-# Global prompt config instance
-prompt_config = PromptConfig()
