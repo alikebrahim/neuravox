@@ -1,174 +1,148 @@
 # Neuravox Installation Guide
 
-## Overview
+## Prerequisites
 
-Neuravox is a personal neural audio processing and transcription tool designed to be cloned and run from `~/.neuravox`. This guide covers the simple installation process.
+Before installing Neuravox, ensure you have:
 
-## System Requirements
+1. **Python 3.12 or higher**
+   ```bash
+   python3 --version  # Should show 3.12+
+   ```
 
-- **Python**: 3.12 or higher
-- **Operating System**: Linux (primary support)
-- **Memory**: 4GB RAM minimum (8GB recommended for large files)
-- **Storage**: 10GB free space for workspace and dependencies
-- **Package Manager**: [uv](https://astral.sh/uv) (required)
-- **Audio Dependencies**: FFmpeg (required for audio processing)
-  - Linux: `sudo apt install ffmpeg` or `sudo dnf install ffmpeg`
+2. **uv package manager**
+   ```bash
+   # Install uv if not present:
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   ```
+
+3. **gum CLI tool**
+   ```bash
+   # Install gum if not present:
+   go install github.com/charmbracelet/gum@latest
+   # Or on macOS: brew install gum
+   ```
+
+4. **FFmpeg** (required for audio processing)
+   ```bash
+   # Ubuntu/Debian
+   sudo apt install ffmpeg
+   
+   # Fedora
+   sudo dnf install ffmpeg
+   
+   # macOS
+   brew install ffmpeg
+   ```
 
 ## Installation
 
-### 1. Install Prerequisites
+1. **Clone the repository to ~/.neuravox**
+   ```bash
+   git clone <repository-url> ~/.neuravox
+   cd ~/.neuravox
+   ```
 
-First, install `uv` if you don't have it:
+2. **Run the installer**
+   ```bash
+   ./scripts/install.sh
+   ```
 
-```bash
-# Install uv (Python package manager)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
+3. **Follow the installation prompts**
+   - Choose "Install Neuravox" from the menu
+   - The installer will:
+     - Create a virtual environment with uv
+     - Install all dependencies
+     - Set up the neuravox command in ~/.local/bin
+     - Initialize the workspace
+     - Create selective symlinks for workspace directories
+     - Install man pages
 
-Install FFmpeg:
+4. **Update your PATH** (if prompted)
+   ```bash
+   # For bash
+   echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+   source ~/.bashrc
+   
+   # For zsh
+   echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+   source ~/.zshrc
+   ```
 
-```bash
-# Ubuntu/Debian
-sudo apt install ffmpeg
+## Post-Installation
 
-# Fedora
-sudo dnf install ffmpeg
+1. **Configure API keys** (for AI transcription)
+   ```bash
+   neuravox config
+   ```
+   
+   Or set environment variables:
+   ```bash
+   export GOOGLE_API_KEY="your-google-api-key"
+   export OPENAI_API_KEY="your-openai-api-key"
+   ```
 
-# Arch
-sudo pacman -S ffmpeg
-```
-
-### 2. Clone and Setup
-
-```bash
-# Clone to the required location
-git clone <repository-url> ~/.neuravox
-
-# Run setup
-cd ~/.neuravox
-./scripts/setup.sh
-```
-
-The setup script will:
-- Create a virtual environment using `uv`
-- Install all dependencies
-- Create a launcher at `~/.local/bin/neuravox`
-- Create workspace symlink at `~/neuravox.workspace`
-
-### 3. Configure PATH
-
-If `~/.local/bin` is not in your PATH, add it:
-
-```bash
-# For bash
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
-source ~/.bashrc
-
-# For zsh
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
-source ~/.zshrc
-```
-
-### 4. Configure API Keys (Optional)
-
-For AI transcription features, set your API keys:
-
-```bash
-# Add to your shell configuration
-export GOOGLE_API_KEY="your-google-api-key"
-export OPENAI_API_KEY="your-openai-api-key"
-```
-
-Or create `~/.neuravox/config/user.yaml`:
-
-```yaml
-api_keys:
-  google_gemini: "your-google-api-key"
-  openai: "your-openai-api-key"
-```
+2. **Verify installation**
+   ```bash
+   neuravox --help
+   man neuravox
+   ```
 
 ## Usage
 
-### Initialize Workspace
-
-```bash
-neuravox init
-```
-
-### Process Audio Files
-
-1. Place audio files in: `~/neuravox.workspace/input/`
-2. Run interactive processing:
-
+Place audio files in `~/neuravox.workspace/input/` and run:
 ```bash
 neuravox process --interactive
 ```
 
-### Check Status
+## Workspace Structure
 
-```bash
-neuravox status
-```
+The installer creates workspace directories at:
+- `~/neuravox.workspace/input/` - Place source audio files here
+- `~/neuravox.workspace/processed/` - Split audio chunks
+- `~/neuravox.workspace/transcribed/` - Final transcriptions
+
+Note: Only these directories are symlinked to avoid database corruption. The SQLite state database remains in the main workspace.
 
 ## Updating
 
 To update Neuravox:
-
 ```bash
 cd ~/.neuravox
 git pull
-
-# Update dependencies if needed
-uv sync
+uv sync  # Update dependencies
 ```
 
-## Workspace Structure
+## Uninstallation
 
-Your workspace at `~/neuravox.workspace/` contains:
+To completely remove Neuravox:
+```bash
+cd ~/.neuravox
+./scripts/install.sh
+```
+Then choose "Uninstall Neuravox" from the menu.
 
-```
-~/neuravox.workspace/
-├── input/        # Place audio files here
-├── processed/    # Split audio chunks
-└── transcribed/  # Transcription results
-```
+The uninstaller will:
+- Remove the neuravox command
+- Remove workspace symlinks
+- Remove man pages
+- Optionally remove configuration and installation directories
 
 ## Troubleshooting
 
 ### Command not found
-
-Make sure `~/.local/bin` is in your PATH:
-
+Ensure `~/.local/bin` is in your PATH:
 ```bash
 echo $PATH | grep -q "$HOME/.local/bin" && echo "PATH is OK" || echo "Need to add to PATH"
 ```
 
 ### Permission denied
-
-Make sure the launcher is executable:
-
+Make sure the install script is executable:
 ```bash
-chmod +x ~/.local/bin/neuravox
+chmod +x ~/.neuravox/scripts/install.sh
 ```
+
+### Missing dependencies
+The installer will check for all prerequisites and provide installation instructions if any are missing.
 
 ### Virtual environment issues
-
 The launcher automatically uses the correct Python from the virtual environment. You don't need to activate it manually.
-
-## Uninstallation
-
-To completely remove Neuravox:
-
-```bash
-# Remove the installation
-rm -rf ~/.neuravox
-
-# Remove the launcher
-rm -f ~/.local/bin/neuravox
-
-# Remove the workspace symlink
-rm -f ~/neuravox.workspace
-
-# Optionally remove workspace data
-rm -rf ~/.neuravox/workspace
-```
