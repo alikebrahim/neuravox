@@ -118,8 +118,8 @@ EOF
     echo -e "${GREEN}✓${NC} Workspace initialized"
     
     # Create config from template if it doesn't exist
-    if [ ! -f "$ACTUAL_INSTALL_DIR/config.yaml" ] && [ -f "$PROJECT_ROOT/config/config.template.yaml" ]; then
-        cp "$PROJECT_ROOT/config/config.template.yaml" "$ACTUAL_INSTALL_DIR/config.yaml"
+    if [ ! -f "$ACTUAL_INSTALL_DIR/config.yaml" ] && [ -f "$PROJECT_ROOT/config.yaml" ]; then
+        cp "$PROJECT_ROOT/config.yaml" "$ACTUAL_INSTALL_DIR/config.yaml"
         echo -e "${GREEN}✓${NC} Configuration created at ~/.neuravox/config.yaml"
     fi
     
