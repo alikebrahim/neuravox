@@ -62,15 +62,39 @@ install_neuravox() {
     echo -e "${CYAN}${BOLD}Installing Neuravox${NC}"
     echo
     
-    # Check if we're in the right location
-    if [ ! -d "$INSTALL_DIR" ] || [ "$PWD" != "$INSTALL_DIR" ]; then
-        echo -e "${RED}Error: This script must be run from ~/.neuravox${NC}"
-        echo -e "Please clone the repository to ~/.neuravox and run again:"
-        echo -e "  ${BOLD}git clone <repo> ~/.neuravox${NC}"
-        echo -e "  ${BOLD}cd ~/.neuravox${NC}"
-        echo -e "  ${BOLD}./scripts/install.sh${NC}"
+    # Determine the actual project root
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    
+    # Check if we're in a nested neuravox directory (e.g., ~/.neuravox/neuravox/scripts)
+    if [[ "$SCRIPT_DIR" == *"/neuravox/scripts" ]] && [[ "$SCRIPT_DIR" == "$HOME/.neuravox"* ]]; then
+        # We're in ~/.neuravox/neuravox/scripts, so project root is ~/.neuravox/neuravox
+        PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+        ACTUAL_INSTALL_DIR="$(cd "$PROJECT_ROOT/.." && pwd)"
+    else
+        # Standard structure: ~/.neuravox/scripts
+        PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+        ACTUAL_INSTALL_DIR="$PROJECT_ROOT"
+    fi
+    
+    # Check if this appears to be a neuravox installation
+    if [ ! -f "$PROJECT_ROOT/pyproject.toml" ] || [ ! -f "$PROJECT_ROOT/neuravox.py" ]; then
+        echo -e "${RED}Error: This doesn't appear to be a Neuravox installation${NC}"
+        echo -e "Missing required files in: $PROJECT_ROOT"
         exit 1
     fi
+    
+    # Check if we're at ~/.neuravox (allowing for nested structure)
+    if [ "$ACTUAL_INSTALL_DIR" != "$INSTALL_DIR" ]; then
+        echo -e "${RED}Error: Neuravox must be installed at ~/.neuravox${NC}"
+        echo -e "Current location: $ACTUAL_INSTALL_DIR"
+        echo -e "Expected location: $INSTALL_DIR"
+        echo -e ""
+        echo -e "Please ensure the repository is at ~/.neuravox"
+        exit 1
+    fi
+    
+    # Use PROJECT_ROOT for all operations
+    cd "$PROJECT_ROOT"
     
     # Create virtual environment and install dependencies
     gum spin --spinner dot --title "Creating virtual environment and installing dependencies..." -- \
@@ -81,16 +105,16 @@ install_neuravox() {
     mkdir -p "$BIN_DIR"
     
     # Create launcher script
-    cat > "$BIN_DIR/neuravox" << 'EOF'
+    cat > "$BIN_DIR/neuravox" << EOF
 #!/usr/bin/env bash
-exec "$HOME/.neuravox/.venv/bin/python" -m neuravox "$@"
+exec "$PROJECT_ROOT/.venv/bin/python" -m neuravox "\$@"
 EOF
     chmod +x "$BIN_DIR/neuravox"
     echo -e "${GREEN}✓${NC} Launcher created at $BIN_DIR/neuravox"
     
     # Initialize workspace
     gum spin --spinner dot --title "Initializing workspace..." -- \
-        "$INSTALL_DIR/.venv/bin/python" -m neuravox init
+        "$PROJECT_ROOT/.venv/bin/python" -m neuravox init
     echo -e "${GREEN}✓${NC} Workspace initialized"
     
     # Create selective symlinks
@@ -98,17 +122,17 @@ EOF
         echo -e "${YELLOW}!${NC} ~/neuravox.workspace already exists, skipping symlink creation"
     else
         mkdir -p "$WORKSPACE_LINK"
-        ln -sf "$INSTALL_DIR/workspace/input" "$WORKSPACE_LINK/input"
-        ln -sf "$INSTALL_DIR/workspace/processed" "$WORKSPACE_LINK/processed"
-        ln -sf "$INSTALL_DIR/workspace/transcribed" "$WORKSPACE_LINK/transcribed"
+        ln -sf "$PROJECT_ROOT/workspace/input" "$WORKSPACE_LINK/input"
+        ln -sf "$PROJECT_ROOT/workspace/processed" "$WORKSPACE_LINK/processed"
+        ln -sf "$PROJECT_ROOT/workspace/transcribed" "$WORKSPACE_LINK/transcribed"
         echo -e "${GREEN}✓${NC} Created workspace symlinks at ~/neuravox.workspace"
     fi
     
     # Install man pages
     mkdir -p "$MAN_DIR"
     for page in neuravox.1 neuravox-init.1 neuravox-process.1 neuravox-status.1 neuravox-config.1; do
-        if [ -f "$INSTALL_DIR/docs/man/$page" ]; then
-            cp "$INSTALL_DIR/docs/man/$page" "$MAN_DIR/"
+        if [ -f "$PROJECT_ROOT/docs/man/$page" ]; then
+            cp "$PROJECT_ROOT/docs/man/$page" "$MAN_DIR/"
         fi
     done
     mandb -u >/dev/null 2>&1 || true
@@ -140,6 +164,16 @@ uninstall_neuravox() {
     echo -e "${CYAN}${BOLD}Uninstalling Neuravox${NC}"
     echo
     
+    # Determine project structure
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [[ "$SCRIPT_DIR" == *"/neuravox/scripts" ]] && [[ "$SCRIPT_DIR" == "$HOME/.neuravox"* ]]; then
+        PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+        ACTUAL_INSTALL_DIR="$(cd "$PROJECT_ROOT/.." && pwd)"
+    else
+        PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+        ACTUAL_INSTALL_DIR="$PROJECT_ROOT"
+    fi
+    
     if gum confirm "This will remove Neuravox completely. Continue?"; then
         # Remove launcher
         if [ -f "$BIN_DIR/neuravox" ]; then
@@ -168,8 +202,8 @@ uninstall_neuravox() {
         fi
         
         # Remove installation directory
-        if [ -d "$INSTALL_DIR" ] && gum confirm "Remove installation directory (~/.neuravox)?"; then
-            rm -rf "$INSTALL_DIR"
+        if [ -d "$ACTUAL_INSTALL_DIR" ] && gum confirm "Remove installation directory (~/.neuravox)?"; then
+            rm -rf "$ACTUAL_INSTALL_DIR"
             echo -e "${GREEN}✓${NC} Removed installation directory"
         fi
         
