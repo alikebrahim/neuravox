@@ -122,9 +122,9 @@ EOF
         echo -e "${YELLOW}!${NC} ~/neuravox.workspace already exists, skipping symlink creation"
     else
         mkdir -p "$WORKSPACE_LINK"
-        ln -sf "$PROJECT_ROOT/workspace/input" "$WORKSPACE_LINK/input"
-        ln -sf "$PROJECT_ROOT/workspace/processed" "$WORKSPACE_LINK/processed"
-        ln -sf "$PROJECT_ROOT/workspace/transcribed" "$WORKSPACE_LINK/transcribed"
+        ln -sf "$ACTUAL_INSTALL_DIR/workspace/input" "$WORKSPACE_LINK/input"
+        ln -sf "$ACTUAL_INSTALL_DIR/workspace/processed" "$WORKSPACE_LINK/processed"
+        ln -sf "$ACTUAL_INSTALL_DIR/workspace/transcribed" "$WORKSPACE_LINK/transcribed"
         echo -e "${GREEN}✓${NC} Created workspace symlinks at ~/neuravox.workspace"
     fi
     
