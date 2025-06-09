@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from rich.console import Console
 
-from modules.shared.progress import UnifiedProgressTracker
+from neuravox.shared.progress import UnifiedProgressTracker
 
 
 class TestUnifiedProgressTracker:

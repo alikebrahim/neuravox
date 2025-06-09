@@ -7,9 +7,9 @@ import pytest
 import numpy as np
 import soundfile as sf
 
-from core.pipeline import AudioPipeline
-from modules.shared.config import UnifiedConfig
-from core.exceptions import PipelineError
+from neuravox.core.pipeline import AudioPipeline
+from neuravox.shared.config import UnifiedConfig
+from neuravox.core.exceptions import PipelineError
 
 
 class TestAudioPipeline:

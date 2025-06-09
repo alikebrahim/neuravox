@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 import pytest
 
-from modules.shared.file_utils import (
+from neuravox.shared.file_utils import (
     ensure_directory,
     create_file_id,
     get_audio_files,

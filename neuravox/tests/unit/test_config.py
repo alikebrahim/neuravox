@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from modules.shared.config import UnifiedConfig, WorkspaceConfig, ProcessingConfig, TranscriptionConfig, APIKeysConfig
+from neuravox.shared.config import UnifiedConfig, WorkspaceConfig, ProcessingConfig, TranscriptionConfig, APIKeysConfig
 
 
 class TestWorkspaceConfig:
@@ -186,7 +186,7 @@ transcription:
             assert config.workspace.input_dir == "test_input"
             assert config.processing.silence_threshold == 0.02
             assert config.processing.min_silence_duration == 30.0
-            assert config.transcription.default_model == "ollama-llama"
+            assert config.transcription.default_model == "whisper-base"
             assert config.transcription.max_concurrent == 5
             assert config.transcription.chunk_processing is False
         finally:

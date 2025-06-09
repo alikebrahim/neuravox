@@ -5,7 +5,7 @@ from pathlib import Path
 from datetime import datetime
 import pytest
 
-from modules.shared.metadata import ChunkMetadata, ProcessingMetadata, TranscriptionMetadata, MetadataManager
+from neuravox.shared.metadata import ChunkMetadata, ProcessingMetadata, TranscriptionMetadata, MetadataManager
 
 
 class TestChunkMetadata:
