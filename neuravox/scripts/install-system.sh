@@ -21,12 +21,14 @@ if echo -e "\U1F680" | grep -q "🚀"; then
     WRENCH="🔧"
     PACKAGE="📦"
     BRAIN="🧠"
+    BOOK="📚"
 else
     ROCKET="[>]"
     CHECK="[✓]"
     WRENCH="[*]"
     PACKAGE="[#]"
     BRAIN="[@]"
+    BOOK="[M]"
 fi
 
 # Banner
@@ -39,55 +41,61 @@ echo -e "${NC}"
 
 # Detect shell and RC file
 detect_shell() {
-    if [ -n "$ZSH_VERSION" ]; then
-        SHELL_RC="$HOME/.zshrc"
-        SHELL_NAME="zsh"
-    elif [ -n "$BASH_VERSION" ]; then
-        SHELL_RC="$HOME/.bashrc"
-        SHELL_NAME="bash"
-    else
-        # Fallback to checking $SHELL
-        case "$SHELL" in
-            */zsh) 
+    # First check the parent shell (what the user is actually using)
+    # This is more accurate than checking the current shell's version variables
+    local parent_shell=""
+    
+    # Try to get the parent shell from environment or ps
+    if [ -n "$SHELL" ]; then
+        parent_shell="$SHELL"
+    elif command -v ps &> /dev/null; then
+        # Try to get parent process shell
+        parent_shell=$(ps -p $PPID -o comm= 2>/dev/null || echo "")
+    fi
+    
+    # Determine shell based on parent shell path/name
+    case "$parent_shell" in
+        */zsh|zsh) 
+            SHELL_RC="$HOME/.zshrc"
+            SHELL_NAME="zsh"
+            ;;
+        */bash|bash) 
+            SHELL_RC="$HOME/.bashrc"
+            SHELL_NAME="bash"
+            ;;
+        */fish|fish)
+            SHELL_RC="$HOME/.config/fish/config.fish"
+            SHELL_NAME="fish"
+            ;;
+        *)
+            # If we can't detect parent, fall back to version variables
+            if [ -n "$ZSH_VERSION" ]; then
                 SHELL_RC="$HOME/.zshrc"
                 SHELL_NAME="zsh"
-                ;;
-            */bash) 
+            elif [ -n "$BASH_VERSION" ]; then
                 SHELL_RC="$HOME/.bashrc"
                 SHELL_NAME="bash"
-                ;;
-            */fish)
-                SHELL_RC="$HOME/.config/fish/config.fish"
-                SHELL_NAME="fish"
-                ;;
-            *)
+            else
                 SHELL_RC="$HOME/.profile"
                 SHELL_NAME="sh"
-                ;;
-        esac
-    fi
+            fi
+            ;;
+    esac
+    
     echo -e "${GREEN}${CHECK}${NC} Detected shell: ${BOLD}$SHELL_NAME${NC}"
 }
 
-# Detect package manager
-detect_package_manager() {
+# Check for required package manager
+check_uv() {
     if command -v uv &> /dev/null; then
-        VENV_CMD="uv venv"
-        PIP_CMD="uv pip"
-        PIP_INSTALL="uv pip install"
-        PIP_SYNC="uv pip sync"
-        PACKAGE_MANAGER="uv"
-        echo -e "${GREEN}${CHECK}${NC} Found ${BOLD}uv${NC} (fast package manager)"
+        echo -e "${GREEN}${CHECK}${NC} Found ${BOLD}uv${NC} (required package manager)"
     else
-        echo -e "${YELLOW}!${NC} uv not found, using standard pip"
-        echo -e "  ${CYAN}Tip: Install uv for 10x faster installs: ${BOLD}curl -LsSf https://astral.sh/uv/install.sh | sh${NC}"
-        VENV_CMD="python3.12 -m venv"
-        PIP_CMD="pip"
-        PACKAGE_MANAGER="pip"
-        
-        # Will be set after venv creation
-        PIP_INSTALL=""
-        PIP_SYNC=""
+        echo -e "${RED}Error: uv is required but not found${NC}"
+        echo -e "\nTo install uv, run:"
+        echo -e "  ${BOLD}curl -LsSf https://astral.sh/uv/install.sh | sh${NC}"
+        echo -e "\nThen restart your terminal or run:"
+        echo -e "  ${BOLD}source ~/.local/bin/env${NC}"
+        exit 1
     fi
 }
 
@@ -201,11 +209,25 @@ show_progress() {
     
     case "$MENU_SYSTEM" in
         gum)
-            gum spin --spinner dot --title "$title" -- bash -c "$cmd"
+            # Create temp file for capturing errors
+            local error_file=$(mktemp)
+            if ! gum spin --spinner dot --title "$title" -- bash -c "$cmd 2>'$error_file'"; then
+                echo -e "${RED}✗ Failed: $title${NC}"
+                if [ -s "$error_file" ]; then
+                    echo -e "${RED}Error details:${NC}"
+                    cat "$error_file"
+                fi
+                rm -f "$error_file"
+                exit 1
+            fi
+            rm -f "$error_file"
             ;;
         *)
             echo -e "${CYAN}${WRENCH}${NC} $title..."
-            eval "$cmd"
+            if ! eval "$cmd"; then
+                echo -e "${RED}✗ Failed: $title${NC}"
+                exit 1
+            fi
             ;;
     esac
 }
@@ -237,7 +259,7 @@ check_python() {
 # Main installation starts here
 echo ""
 detect_shell
-detect_package_manager
+check_uv
 detect_menu_system
 check_python
 
@@ -305,7 +327,7 @@ echo -e "\n${CYAN}${ROCKET} Installation Summary${NC}"
 echo -e "  Install location: ${BOLD}$INSTALL_DIR${NC}"
 echo -e "  Binary location:  ${BOLD}$BIN_DIR${NC}"
 echo -e "  Shell config:     ${BOLD}${SELECTED_RC:-None}${NC}"
-echo -e "  Package manager:  ${BOLD}$PACKAGE_MANAGER${NC}"
+echo -e "  Package manager:  ${BOLD}uv${NC} (required)"
 
 if ! confirm "Proceed with installation?"; then
     echo -e "${YELLOW}Installation cancelled${NC}"
@@ -315,7 +337,25 @@ fi
 # Create directories
 echo -e "\n${CYAN}${ROCKET} Starting Installation${NC}"
 
+# Debug: Show installation mode
+if [ "$IS_DEV" = true ]; then
+    echo -e "${YELLOW}Running in development mode${NC}"
+else
+    echo -e "${GREEN}Running in user installation mode${NC}"
+fi
+
 if [ "$IS_DEV" != true ]; then
+    # Check if installation directory already exists with files
+    if [ -d "$INSTALL_DIR" ] && [ -f "$INSTALL_DIR/pyproject.toml" ]; then
+        echo -e "${YELLOW}! Installation directory already exists at $INSTALL_DIR${NC}"
+        if ! confirm "Remove existing installation and continue?"; then
+            echo -e "${YELLOW}Installation cancelled${NC}"
+            exit 0
+        fi
+        echo -e "${CYAN}${WRENCH} Removing existing installation...${NC}"
+        rm -rf "$INSTALL_DIR"
+    fi
+    
     # Create installation directory
     show_progress "Creating installation directory" "mkdir -p '$INSTALL_DIR'"
     
@@ -323,78 +363,66 @@ if [ "$IS_DEV" != true ]; then
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
     
+    # Export vars for subshell
+    export INSTALL_DIR PROJECT_ROOT
+    
+    # Copy project files with direct commands
     show_progress "Copying project files" "
-        if command -v rsync &> /dev/null; then
-            rsync -a --exclude='.venv' --exclude='__pycache__' --exclude='*.pyc' \
-                  --exclude='.git' --exclude='*.egg-info' --exclude='.pytest_cache' \
-                  --exclude='tests' --exclude='docs' \
-                  '$PROJECT_ROOT/' '$INSTALL_DIR/'
-        else
-            cp -r '$PROJECT_ROOT'/* '$INSTALL_DIR/'
-            find '$INSTALL_DIR' -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
-            find '$INSTALL_DIR' -name '*.pyc' -delete 2>/dev/null || true
-        fi
+        echo 'DEBUG: PROJECT_ROOT=$PROJECT_ROOT' && \
+        echo 'DEBUG: INSTALL_DIR=$INSTALL_DIR' && \
+        echo 'DEBUG: Checking if source directories exist...' && \
+        
+        # Check if source directories exist
+        for dir in modules core cli config scripts docs/man; do
+            if [ ! -e \"\$PROJECT_ROOT/\$dir\" ]; then
+                echo \"ERROR: Source directory not found: \$PROJECT_ROOT/\$dir\"
+                exit 1
+            fi
+        done && \
+        
+        # Create essential directories first
+        mkdir -p \"\$INSTALL_DIR\"/{modules,core,cli,config,scripts,docs/man} || {
+            echo 'ERROR: Failed to create directories in $INSTALL_DIR'
+            exit 1
+        } && \
+        
+        # Copy essential directories
+        cp -r \"\$PROJECT_ROOT\"/modules \"\$INSTALL_DIR/\" && \
+        cp -r \"\$PROJECT_ROOT\"/core \"\$INSTALL_DIR/\" && \
+        cp -r \"\$PROJECT_ROOT\"/cli \"\$INSTALL_DIR/\" && \
+        cp -r \"\$PROJECT_ROOT\"/config \"\$INSTALL_DIR/\" && \
+        cp -r \"\$PROJECT_ROOT\"/scripts \"\$INSTALL_DIR/\" && \
+        cp -r \"\$PROJECT_ROOT\"/docs/man \"\$INSTALL_DIR\"/docs/ && \
+        
+        # Copy essential files
+        cp \"\$PROJECT_ROOT\"/pyproject.toml \"\$INSTALL_DIR/\" && \
+        { cp \"\$PROJECT_ROOT\"/README.md \"\$INSTALL_DIR/\" 2>/dev/null || true; } && \
+        { cp \"\$PROJECT_ROOT\"/CLAUDE.md \"\$INSTALL_DIR/\" 2>/dev/null || true; } && \
+        
+        # Clean up any __pycache__ that might have been copied
+        { find \"\$INSTALL_DIR\" -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true; } && \
+        { find \"\$INSTALL_DIR\" -name '*.pyc' -delete 2>/dev/null || true; }
     "
 fi
 
 # Create user bin directory if needed
 mkdir -p "$BIN_DIR"
 
-# Change to installation directory
-cd "$INSTALL_DIR"
-
-# Create virtual environment
-if [ "$PACKAGE_MANAGER" = "uv" ]; then
-    show_progress "Creating virtual environment with uv" "$VENV_CMD"
-else
-    show_progress "Creating virtual environment" "$PYTHON_CMD -m venv venv"
-    # Set pip commands for standard pip
-    PIP_INSTALL="./venv/bin/pip install"
-    PIP_CMD="./venv/bin/pip"
-fi
-
-# Install dependencies
-if [ "$PACKAGE_MANAGER" = "uv" ]; then
-    if [ "$IS_DEV" = true ]; then
-        show_progress "Installing in development mode" "$PIP_INSTALL -e ."
-    else
-        show_progress "Installing dependencies" "$PIP_INSTALL ."
-    fi
-else
-    show_progress "Upgrading pip" "$PIP_CMD install --upgrade pip"
-    if [ "$IS_DEV" = true ]; then
-        show_progress "Installing in development mode" "$PIP_INSTALL -e ."
-    else
-        show_progress "Installing dependencies" "$PIP_INSTALL ."
-    fi
-fi
+# Create virtual environment and install dependencies with uv
+show_progress "Creating virtual environment and installing dependencies" "cd '$INSTALL_DIR' && uv sync"
 
 # Create wrapper script
 echo -e "\n${CYAN}${WRENCH} Creating launcher...${NC}"
 
-if [ "$PACKAGE_MANAGER" = "uv" ]; then
-    PYTHON_BIN="$INSTALL_DIR/.venv/bin/python"
-else
-    PYTHON_BIN="$INSTALL_DIR/venv/bin/python"
-fi
+# uv always creates .venv directory
+PYTHON_BIN="$INSTALL_DIR/.venv/bin/python"
 
 cat > "$BIN_DIR/neuravox" << EOF
 #!/usr/bin/env bash
 # Neuravox launcher - auto-manages virtual environment
 
-if [ "$IS_DEV" = true ]; then
-    # Development mode - check if we're in the right venv
-    if [ -z "\$VIRTUAL_ENV" ] || [ "\$VIRTUAL_ENV" != "$INSTALL_DIR/.venv" ]; then
-        echo "Please activate the development virtual environment:"
-        echo "  cd $INSTALL_DIR"
-        echo "  source .venv/bin/activate"
-        exit 1
-    fi
-    exec python -m cli.main "\$@"
-else
-    # Production mode - use embedded venv
-    exec "$PYTHON_BIN" -m cli.main "\$@"
-fi
+# Always use the installed virtual environment
+exec "$PYTHON_BIN" -m cli.main "\$@"
 EOF
 
 chmod +x "$BIN_DIR/neuravox"
@@ -415,13 +443,48 @@ fi
 
 # Initialize workspace
 echo -e "\n${CYAN}${BRAIN} Initializing Neuravox workspace...${NC}"
-if [ "$PACKAGE_MANAGER" = "uv" ]; then
-    INIT_PYTHON="$INSTALL_DIR/.venv/bin/python"
-else
-    INIT_PYTHON="$INSTALL_DIR/venv/bin/python"
-fi
+INIT_PYTHON="$INSTALL_DIR/.venv/bin/python"
 
-show_progress "Creating workspace structure" "$INIT_PYTHON -m cli.main init --non-interactive"
+# Create workspace at ~/.neuravox/workspace
+WORKSPACE_DIR="$HOME/.neuravox/workspace"
+show_progress "Creating workspace structure" "cd '$INSTALL_DIR' && $INIT_PYTHON -m cli.main init --workspace '$WORKSPACE_DIR'"
+
+# Create symlink from ~/neuravox.workspace to ~/.neuravox/workspace
+echo -e "\n${CYAN}${WRENCH} Creating workspace symlink...${NC}"
+ln -sf "$WORKSPACE_DIR" "$HOME/neuravox.workspace"
+echo -e "${GREEN}${CHECK}${NC} Created symlink: ${BOLD}~/neuravox.workspace${NC} → ${BOLD}~/.neuravox/workspace${NC}"
+
+# Install man pages
+echo -e "\n${CYAN}${PACKAGE} Installing man pages...${NC}"
+MAN_DIR="$HOME/.local/share/man/man1"
+mkdir -p "$MAN_DIR"
+
+MAN_PAGES=(
+    "neuravox.1"
+    "neuravox-init.1"
+    "neuravox-process.1"
+    "neuravox-status.1"
+    "neuravox-config.1"
+)
+
+for page in "${MAN_PAGES[@]}"; do
+    if [ -f "$INSTALL_DIR/docs/man/$page" ]; then
+        cp "$INSTALL_DIR/docs/man/$page" "$MAN_DIR/"
+        echo -e "  ${CHECK} Installed $page"
+    fi
+done
+
+# Update man database
+show_progress "Updating man database" "mandb -u >/dev/null 2>&1 || true"
+
+# Check if MANPATH needs to be added
+if [[ ":$MANPATH:" != *":$HOME/.local/share/man:"* ]] && [ -n "$SELECTED_RC" ] && [ -f "$SELECTED_RC" ]; then
+    # Add MANPATH update
+    echo "" >> "$SELECTED_RC"
+    echo "# Added by Neuravox installer - man pages" >> "$SELECTED_RC"
+    echo "export MANPATH=\"\$HOME/.local/share/man:\$MANPATH\"" >> "$SELECTED_RC"
+    MANPATH_UPDATED=true
+fi
 
 # Success message
 echo -e "\n${GREEN}═══════════════════════════════════════════════════════${NC}"
@@ -431,9 +494,10 @@ echo -e "${GREEN}═════════════════════
 echo -e "\n${CYAN}Installation Details:${NC}"
 echo -e "  ${PACKAGE} Installed to: ${BOLD}$INSTALL_DIR${NC}"
 echo -e "  ${ROCKET} Command available at: ${BOLD}$BIN_DIR/neuravox${NC}"
-echo -e "  ${BRAIN} Workspace created at: ${BOLD}$HOME/neuravox${NC}"
+echo -e "  ${BRAIN} Workspace created at: ${BOLD}~/neuravox.workspace${NC}"
+echo -e "  ${BOOK} Man pages installed: ${BOLD}man neuravox${NC}"
 
-if [ "$PATH_UPDATED" = true ]; then
+if [ "$PATH_UPDATED" = true ] || [ "$MANPATH_UPDATED" = true ]; then
     echo -e "\n${YELLOW}${WRENCH} Action Required:${NC}"
     echo -e "  Run: ${BOLD}source $SELECTED_RC${NC}"
     echo -e "  Or start a new terminal session"
