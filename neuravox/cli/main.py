@@ -25,7 +25,6 @@ app = typer.Typer(
     name="neuravox",
     help="Neuravox - Advanced audio processing and transcription platform",
     rich_markup_mode="rich",
-    prog_name="neuravox",
 )
 console = Console()
 
