@@ -21,9 +21,6 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 
-[project.scripts]
-neuravox = "neuravox.cli.main:app"
-
 dependencies = [
     # Audio processing
     "librosa>=0.11.0",
@@ -60,6 +57,9 @@ dependencies = [
     "pytest-asyncio>=0.23.0",
     "ruff>=0.5.0",
 ]
+
+[project.scripts]
+neuravox = "neuravox.cli.main:app"
 
 [build-system]
 requires = ["hatchling"]
