@@ -6,7 +6,6 @@ from typing import Optional
 from dotenv import load_dotenv
 
 from .base import AudioTranscriptionModel
-from ..prompt_config import prompt_config
 
 # Load environment variables from .env file
 # First try to load from ~/.neuravox/.env (production)
@@ -61,14 +60,8 @@ class GoogleAIModel(AudioTranscriptionModel):
             audio_file = self.client.files.upload(file=str(audio_path))
             
             # Get system prompt from configuration
-            # First check if custom prompt is provided in model config
-            custom_prompt = self.config.get("system_prompt")
-            if custom_prompt:
-                prompt = custom_prompt
-            else:
-                # Use prompt from TOML config based on provider
-                prompt = prompt_config.get_prompt("google")
-                
+            prompt = self.config.get("system_prompt")
+            
             # If no configured prompt, use default hardcoded prompt
             if not prompt:
                 prompt = """Please transcribe the audio in this file. Provide only the transcribed text without any additional commentary, explanations, or formatting. 

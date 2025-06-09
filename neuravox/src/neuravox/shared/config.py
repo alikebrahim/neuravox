@@ -38,6 +38,7 @@ class ModelConfig:
     model_id: str
     parameters: Dict[str, Any] = field(default_factory=dict)
     device: Optional[str] = None  # For local models
+    system_prompt: Optional[str] = None
 
 
 class UnifiedConfig:
@@ -141,6 +142,13 @@ class UnifiedConfig:
                     else:
                         # Add new model
                         self.models[model_key] = ModelConfig(**model_data)
+            
+            # Prompts - set system_prompt for all models
+            if "prompts" in data and "system_prompt" in data["prompts"]:
+                system_prompt = data["prompts"]["system_prompt"]
+                for model in self.models.values():
+                    if not model.system_prompt:  # Only set if not already specified
+                        model.system_prompt = system_prompt
         
         except Exception as e:
             print(f"Warning: Failed to load config from {self.config_path}: {e}")

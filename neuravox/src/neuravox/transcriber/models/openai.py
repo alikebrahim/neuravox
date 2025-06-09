@@ -5,7 +5,6 @@ from typing import Optional
 from dotenv import load_dotenv
 
 from .base import AudioTranscriptionModel
-from ..prompt_config import prompt_config
 
 # Load environment variables from .env file
 # First try to load from ~/.neuravox/.env (production)
@@ -56,14 +55,8 @@ class OpenAIModel(AudioTranscriptionModel):
             raise ValueError(f"Invalid audio file: {audio_path}")
         
         try:
-            # Get system prompt
-            custom_prompt = self.config.get("system_prompt")
-            if not custom_prompt:
-                custom_prompt = prompt_config.get_prompt("openai")
-            
-            # For OpenAI Whisper, the prompt parameter guides the style
-            # If no prompt configured, Whisper will use its default behavior
-            whisper_prompt = self.config.get("prompt", custom_prompt)
+            # Get system prompt from configuration
+            whisper_prompt = self.config.get("system_prompt")
             
             # Prepare parameters from config
             params = {
