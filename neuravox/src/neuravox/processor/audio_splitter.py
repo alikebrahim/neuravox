@@ -545,6 +545,27 @@ class AudioProcessor:
         # Set output format to FLAC for transcription optimization
         self.output_format = 'flac'
         
+        # If chunking occurred (multiple chunks), save full file and organize chunks in subdirectory
+        if len(audio_chunks) > 1:
+            # Save full file as FLAC
+            full_file_path = output_dir / "full-file.flac"
+            try:
+                # Load full audio file and convert to 16kHz mono FLAC
+                y_full, sr_full = librosa.load(str(input_file), sr=16000, mono=True)
+                sf.write(str(full_file_path), y_full, 16000, format='FLAC')
+                if not self.pipeline_mode:
+                    print(f"   ✓ Saved full audio file: {full_file_path.name}")
+            except Exception as e:
+                if not self.pipeline_mode:
+                    print(f"   ⚠️  Failed to save full audio file: {e}")
+            
+            # Create chunks subdirectory for organized storage
+            chunks_dir = output_dir / "chunks"
+            chunks_dir.mkdir(exist_ok=True)
+        else:
+            # Single chunk - no need for subdirectory or full file
+            chunks_dir = output_dir
+        
         for idx, (start, end) in enumerate(audio_chunks):
             if progress_callback:
                 progress_callback()
@@ -553,8 +574,8 @@ class AudioProcessor:
             y, sr = librosa.load(str(input_file), sr=16000, mono=True,
                                offset=start, duration=end-start)
             
-            # Create output filename
-            chunk_file = output_dir / f"chunk_{idx:03d}.flac"
+            # Create output filename in appropriate directory
+            chunk_file = chunks_dir / f"chunk_{idx:03d}.flac"
             
             # Save chunk
             sf.write(str(chunk_file), y, sr, format='FLAC')

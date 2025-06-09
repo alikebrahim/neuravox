@@ -25,6 +25,7 @@ class AudioMetadata:
         self.processing_end = None
         self.silence_segments = []
         self.audio_chunks = []
+        self.full_file = None  # Store full file metadata separately
         self.processing_stats = {}
         
     def add_silence_segment(self, start: float, end: float, confidence: float = 1.0):
@@ -52,6 +53,19 @@ class AudioMetadata:
             "output_file": str(output_file.name),
             "file_size_mb": output_file.stat().st_size / (1024 * 1024) if output_file.exists() else 0
         })
+    
+    def add_full_file(self, start: float, end: float, output_file: Path):
+        """Add full file metadata separately from chunks"""
+        self.full_file = {
+            "start_time": start,
+            "end_time": end,
+            "duration": end - start,
+            "start_formatted": self._format_time(start),
+            "end_formatted": self._format_time(end),
+            "duration_formatted": self._format_duration(end - start),
+            "output_file": str(output_file.name),
+            "file_size_mb": output_file.stat().st_size / (1024 * 1024) if output_file.exists() else 0
+        }
     
     def set_processing_stats(self, stats: Dict[str, Any]):
         """Set processing statistics"""
@@ -106,6 +120,7 @@ class AudioMetadata:
                 "output_percentage": (sum(chunk["duration"] for chunk in self.audio_chunks) / total_duration * 100) if total_duration > 0 else 0,
                 "chunks": self.audio_chunks
             },
+            "full_file": self.full_file,
             "summary": {
                 "input_duration": self._format_duration(total_duration),
                 "output_duration": self._format_duration(sum(chunk["duration"] for chunk in self.audio_chunks)),
@@ -194,6 +209,14 @@ class AudioMetadata:
             for chunk in output["chunks"]:
                 report.append(f"      {chunk['chunk_id']}. {chunk['start_formatted']} - {chunk['end_formatted']} "
                             f"({chunk['duration_formatted']}) → {chunk['output_file']}")
+        
+        # Full file info
+        if metadata.get("full_file"):
+            full_file = metadata["full_file"]
+            report.append(f"\n💽 Full File:")
+            report.append(f"   Duration: {full_file['duration_formatted']}")
+            report.append(f"   File: {full_file['output_file']}")
+            report.append(f"   Size: {full_file['file_size_mb']:.1f}MB")
         
         # Summary
         summary = metadata["summary"]
@@ -386,30 +409,31 @@ class OutputManager:
         
         exported_count = 0
         
-        # Always export full original file first
-        format_ext = MultiFormatExporter.SUPPORTED_FORMATS[self.output_format]['ext']
-        full_file_output = file_output_dir / f"{source_file.stem}_full_16k{format_ext}"
-        
-        print(f"   🎵 Converting full file to optimized {self.output_format.upper()}...")
-        if self.output_format == 'flac':
-            success = self.exporter.export_full_file_flac(source_file, full_file_output)
-        else:
-            # For other formats, use the chunk export method but load the whole file
-            try:
-                y, sr = librosa.load(str(source_file), sr=self.exporter.sample_rate)
-                success = self.exporter.export_chunk(y, full_file_output, self.output_format)
-            except Exception as e:
-                print(f"   ⚠️  Error loading full file: {e}")
-                success = False
-        
-        if success:
-            print(f"   ✅ Full file converted: {full_file_output.name}")
-            # Add full file to metadata (but don't count it in exported_count)
-            total_duration = processing_stats.get("total_duration", 0)
-            metadata.add_audio_chunk(0, 0.0, total_duration, full_file_output)
-            # Don't increment exported_count for the full file
-        else:
-            print(f"   ❌ Failed to convert full file")
+        # Export full original file only when chunking occurs (multiple chunks)
+        if audio_chunks and len(audio_chunks) > 1:
+            format_ext = MultiFormatExporter.SUPPORTED_FORMATS[self.output_format]['ext']
+            full_file_output = file_output_dir / f"full-file{format_ext}"
+            
+            print(f"   🎵 Converting full file to optimized {self.output_format.upper()}...")
+            if self.output_format == 'flac':
+                success = self.exporter.export_full_file_flac(source_file, full_file_output)
+            else:
+                # For other formats, use the chunk export method but load the whole file
+                try:
+                    y, sr = librosa.load(str(source_file), sr=self.exporter.sample_rate)
+                    success = self.exporter.export_chunk(y, full_file_output, self.output_format)
+                except Exception as e:
+                    print(f"   ⚠️  Error loading full file: {e}")
+                    success = False
+            
+            if success:
+                print(f"   ✅ Full file converted: {full_file_output.name}")
+                # Add full file to metadata separately from chunks
+                total_duration = processing_stats.get("total_duration", 0)
+                metadata.add_full_file(0.0, total_duration, full_file_output)
+                # Don't increment exported_count for the full file
+            else:
+                print(f"   ❌ Failed to convert full file")
         
         # Export audio chunks only if there are multiple chunks (actual splitting occurred)
         if audio_chunks and len(audio_chunks) > 1:

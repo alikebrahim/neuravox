@@ -1,6 +1,6 @@
 # Neuravox
 
-A unified platform for audio processing and AI-powered transcription, combining sophisticated silence-based audio splitting with multi-model transcription capabilities.
+A unified platform for audio processing and AI-powered transcription, combining silence-based audio splitting with multi-model transcription capabilities.
 
 **Project Status:** Phase 1 Complete (95%) - Core functionality implemented, tested, and production-ready.
 
@@ -81,6 +81,7 @@ neuravox init
 ```
 
 This creates the following structure in `~/neuravox/`:
+
 - `input/` - Place audio files here
 - `processed/` - Split audio chunks stored here
 - `transcribed/` - Final transcripts saved here
@@ -126,6 +127,7 @@ neuravox resume
 ```
 
 Processed files will be in:
+
 - `~/neuravox/processed/[file_id]/` - Audio chunks
 - `~/neuravox/transcribed/[file_id]/` - Transcripts
 
@@ -134,20 +136,25 @@ Processed files will be in:
 ### Commands
 
 #### `neuravox init`
+
 Initialize workspace and create directory structure.
 
 Options:
+
 - `--workspace PATH` - Custom workspace location (default: ~/neuravox)
 
 #### `neuravox process`
+
 Process audio files through the complete pipeline.
 
 Options:
+
 - `--model, -m` - Transcription model to use (google-gemini, openai-whisper, whisper-base, whisper-turbo)
 - `--interactive, -i` - Interactive file selection mode
 - Files can be specified as arguments or selected interactively
 
 Examples:
+
 ```bash
 # Interactive mode
 neuravox process -i
@@ -160,21 +167,26 @@ neuravox process -m openai-whisper audio.mp3
 ```
 
 #### `neuravox status`
+
 Show pipeline status, processing statistics, and recent activity.
 
 #### `neuravox resume`
+
 Resume processing of failed files.
 
 #### `neuravox config`
+
 View and manage configuration settings.
 
 Options:
+
 - `show` - Display current configuration
 - `set KEY VALUE` - Update configuration value
 
 ### Configuration
 
 Configuration follows a hierarchy (highest to lowest priority):
+
 1. Environment variables
 2. User configuration file
 3. Default configuration
@@ -229,18 +241,21 @@ export TRANSCRIPTION_DEFAULT_MODEL="openai-whisper"
 ### Supported Models
 
 #### Google Gemini (Recommended)
+
 - Model: `google-gemini`
 - Requires: `GOOGLE_API_KEY`
 - Best for: Long audio files, high accuracy
-- Get API key: https://makersuite.google.com/app/apikey
+- Get API key: <https://makersuite.google.com/app/apikey>
 
 #### OpenAI Whisper
+
 - Model: `openai-whisper`
 - Requires: `OPENAI_API_KEY`
 - Best for: Multiple language support
-- Get API key: https://platform.openai.com/api-keys
+- Get API key: <https://platform.openai.com/api-keys>
 
 #### Whisper (Local)
+
 - Models: `whisper-tiny`, `whisper-base`, `whisper-small`, `whisper-medium`, `whisper-large`, `whisper-turbo`
 - Requires: FFmpeg installation
 - Best for: Privacy, offline usage, no API costs
@@ -353,21 +368,25 @@ mypy modules/ core/ cli/
 ### Common Issues
 
 #### "API key not configured"
+
 - Ensure environment variables are set: `echo $GOOGLE_API_KEY`
 - Check .env file is in the project root
 - Restart terminal after setting environment variables
 
 #### "Audio file not found"
+
 - Use absolute paths or place files in workspace input directory
 - Check file permissions
 - Ensure file extension is supported (.mp3, .wav, .flac, etc.)
 
 #### "No silence detected"
+
 - File may not have 25+ second silence gaps
 - Try adjusting `min_silence_duration` in config
 - Use lower `silence_threshold` for quieter audio
 
 #### "Import error" or "Module not found"
+
 - Ensure installation with `-e` flag: `pip install -e .`
 - Activate virtual environment
 - Check Python version (3.12+)
@@ -391,6 +410,7 @@ mypy modules/ core/ cli/
 ## Roadmap
 
 ### Phase 1 (Current - 95% Complete)
+
 - ✅ Core audio processing pipeline
 - ✅ Multi-model transcription support
 - ✅ Unified CLI interface
@@ -399,12 +419,14 @@ mypy modules/ core/ cli/
 - 🔲 Complete documentation and tutorials
 
 ### Phase 2 (Planned)
+
 - REST API for web integration
 - Real-time progress via WebSocket
 - Web-based file upload interface
 - Cloud storage integration
 
 ### Phase 3 (Future)
+
 - Mobile app support
 - Multi-user collaboration
 - Advanced audio analysis features
@@ -414,10 +436,10 @@ mypy modules/ core/ cli/
 
 MIT License - see LICENSE file for details.
 
-
 ## Acknowledgments
 
 - Built with a modular architecture for audio processing and transcription
 - Uses librosa for audio processing
 - Integrates with Google, OpenAI APIs, and Local Whisper
 - Rich CLI powered by Typer and Rich libraries
+
