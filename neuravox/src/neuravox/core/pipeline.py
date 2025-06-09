@@ -24,7 +24,7 @@ class AudioPipeline:
     def __init__(self, config: Optional[UnifiedConfig] = None):
         self.config = config or UnifiedConfig()
         self.console = Console()
-        self.state_manager = StateManager(self.config.workspace.base_path)
+        self.state_manager = StateManager(self.config.workspace)
         
         # Initialize modules with pipeline mode
         self.audio_processor = AudioProcessor(
@@ -88,7 +88,7 @@ class AudioPipeline:
                 # Phase 1: Audio Processing
                 tracker.add_task('processing', f"Processing {audio_file.name}", 100)
                 
-                process_output = self.config.workspace.processed_path / file_id
+                process_output = self.config.processed_path / file_id
                 ensure_directory(process_output)
                 
                 # Process audio file
@@ -118,7 +118,7 @@ class AudioPipeline:
                                    f"Transcribing {len(metadata.chunks)} chunks", 
                                    len(metadata.chunks))
                     
-                    transcript_output = self.config.workspace.transcribed_path / file_id
+                    transcript_output = self.config.transcribed_path / file_id
                     ensure_directory(transcript_output)
                     
                     # Transcribe chunks

@@ -1,0 +1,67 @@
+# Neuravox Configuration
+# 
+# This file contains user-specific settings.
+# API keys should be set as environment variables:
+#   export GOOGLE_API_KEY="your-key"
+#   export OPENAI_API_KEY="your-key"
+
+# Workspace location (default: ~/.neuravox/workspace)
+# Can be overridden with NEURAVOX_WORKSPACE env var
+workspace: ~/.neuravox/workspace
+
+# Audio processing settings
+processing:
+  silence_threshold: 0.01
+  min_silence_duration: 25.0
+  sample_rate: 16000
+  output_format: flac
+  compression_level: 8
+  normalize: true
+  chunk_boundary: simple
+
+# Transcription settings
+transcription:
+  default_model: google-gemini
+  max_concurrent: 3
+  chunk_processing: true
+  combine_chunks: true
+  include_timestamps: true
+
+# Model configurations
+# API keys are read from environment variables automatically
+models:
+  google-gemini:
+    name: Google Gemini Flash
+    provider: google
+    model_id: gemini-2.0-flash-exp
+    parameters:
+      temperature: 0.1
+  
+  openai-whisper:
+    name: OpenAI Whisper
+    provider: openai
+    model_id: whisper-1
+    parameters:
+      response_format: text
+  
+  whisper-base:
+    name: Whisper Base (Local)
+    provider: whisper-local
+    model_id: base
+    device: null  # Auto-detect
+    parameters:
+      language: null  # Auto-detect
+  
+  whisper-turbo:
+    name: Whisper Turbo (Local)
+    provider: whisper-local
+    model_id: turbo
+    device: null  # Auto-detect
+    parameters:
+      language: null  # Auto-detect
+
+# Pipeline settings
+pipeline:
+  mode: sequential
+  keep_intermediate: true
+  resume_on_failure: true

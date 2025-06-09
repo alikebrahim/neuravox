@@ -94,3 +94,8 @@ Thumbs.db
 config/*.yaml
 !config/default.yaml
 !neuravox/config/default.yaml
+
+# Documentation - ignore all .md except README.md
+*.md
+!README.md
+!.gitkeep

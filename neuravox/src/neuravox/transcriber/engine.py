@@ -31,25 +31,16 @@ class AudioTranscriber:
             if model_config.system_prompt:
                 model_kwargs['system_prompt'] = model_config.system_prompt
             
-            # Use API keys from config.api_keys if not set in model config
-            api_key = model_config.api_key
-            if not api_key:
-                if model_config.provider == "google":
-                    api_key = self.config.api_keys.google_api_key
-                elif model_config.provider == "openai":
-                    api_key = self.config.api_keys.openai_api_key
-            
             # Create model instance based on provider
+            # API keys are now handled by the model classes directly from environment
             if model_config.provider == "google":
                 self._models[model_key] = GoogleAIModel(
                     model_id=model_config.model_id,
-                    api_key=api_key,
                     **model_kwargs
                 )
             elif model_config.provider == "openai":
                 self._models[model_key] = OpenAIModel(
                     model_id=model_config.model_id,
-                    api_key=api_key,
                     **model_kwargs
                 )
             elif model_config.provider == "whisper-local":

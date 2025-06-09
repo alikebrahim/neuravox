@@ -1400,9 +1400,7 @@ Configuration editing not yet implemented
 Please edit the configuration file directly:
   config/default.yaml
 The issue requires to be fixed by implementing the configuration editing functionality in the CLI.
-2. The ~/neuravox.workspace should symlink only the transcribed dir from ~/.neuravox/workspace/transcribed/
-3. There should be an easy update mechanism though the git repo and dev repo
-4. Create an uninstall mechanism that would clear the man pages
+2. Config mechanism is flawed. For instance, I've been facing issues with configuring with default.yml. When the project is set up (cloned and installed), there are two config dirs, one at root, and the other at ~/.neuravox/neuravox/config/. This is creating issues..
 
 ## Update Mechanism (Future Implementation)
 

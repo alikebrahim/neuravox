@@ -117,6 +117,19 @@ EOF
         "$PROJECT_ROOT/.venv/bin/python" -m neuravox init
     echo -e "${GREEN}✓${NC} Workspace initialized"
     
+    # Create config from template if it doesn't exist
+    if [ ! -f "$ACTUAL_INSTALL_DIR/config.yaml" ] && [ -f "$PROJECT_ROOT/config/config.template.yaml" ]; then
+        cp "$PROJECT_ROOT/config/config.template.yaml" "$ACTUAL_INSTALL_DIR/config.yaml"
+        echo -e "${GREEN}✓${NC} Configuration created at ~/.neuravox/config.yaml"
+    fi
+    
+    # Create .env from example if it doesn't exist
+    if [ ! -f "$ACTUAL_INSTALL_DIR/.env" ] && [ -f "$PROJECT_ROOT/.env.example" ]; then
+        cp "$PROJECT_ROOT/.env.example" "$ACTUAL_INSTALL_DIR/.env"
+        echo -e "${GREEN}✓${NC} Environment file created at ~/.neuravox/.env"
+        echo -e "${YELLOW}!${NC} Please edit ~/.neuravox/.env and add your API keys"
+    fi
+    
     # Create selective symlinks
     if [ -e "$WORKSPACE_LINK" ]; then
         echo -e "${YELLOW}!${NC} ~/neuravox.workspace already exists, skipping symlink creation"
@@ -151,10 +164,12 @@ EOF
     echo -e "${GREEN}${BOLD}Installation complete!${NC}"
     echo
     echo -e "Quick start:"
-    echo -e "  ${BOLD}neuravox --help${NC}      # Show help"
-    echo -e "  ${BOLD}neuravox config${NC}      # Configure API keys"
-    echo -e "  ${BOLD}neuravox process${NC}     # Process audio files"
+    echo -e "  ${BOLD}1. Edit ~/.neuravox/.env${NC}          # Add your API keys"
+    echo -e "  ${BOLD}2. neuravox --help${NC}                # Show help"
+    echo -e "  ${BOLD}3. neuravox process -i${NC}            # Process audio interactively"
     echo
+    echo -e "Config: ${BOLD}~/.neuravox/config.yaml${NC}"
+    echo -e "Environment: ${BOLD}~/.neuravox/.env${NC}"
     echo -e "Workspace: ${BOLD}~/neuravox.workspace${NC}"
     echo -e "Man pages: ${BOLD}man neuravox${NC}"
 }

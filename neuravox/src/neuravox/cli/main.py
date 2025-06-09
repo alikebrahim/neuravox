@@ -28,33 +28,21 @@ def init(
     workspace: Optional[Path] = typer.Option(None, "--workspace", "-w", 
                                             help="Workspace directory path")
 ):
-    """Initialize workspace and configuration"""
+    """Initialize workspace directories"""
     config = UnifiedConfig()
     
     if workspace:
-        config.workspace.base_path = workspace
+        config.workspace = Path(workspace).expanduser()
     
-    # Create directories
-    directories = [
-        config.workspace.input_path,
-        config.workspace.processed_path,
-        config.workspace.transcribed_path
-    ]
-    
-    for directory in directories:
-        directory.mkdir(parents=True, exist_ok=True)
-    
-    # Save configuration
-    config_path = config.workspace.base_path / "config.yaml"
-    config.save(config_path)
+    # Create workspace directories
+    config.ensure_workspace_dirs()
     
     console.print(Panel(
-        f"[green]✓ Workspace initialized at {config.workspace.base_path}[/green]\n\n"
+        f"[green]✓ Workspace initialized at {config.workspace}[/green]\n\n"
         f"Directories created:\n"
-        f"  • Input: {config.workspace.input_path}\n"
-        f"  • Processed: {config.workspace.processed_path}\n"
-        f"  • Transcribed: {config.workspace.transcribed_path}\n\n"
-        f"Configuration saved to: {config_path}",
+        f"  • Input: {config.input_path}\n"
+        f"  • Processed: {config.processed_path}\n"
+        f"  • Transcribed: {config.transcribed_path}",
         title="Workspace Initialized",
         border_style="green"
     ))
@@ -72,16 +60,7 @@ def process(
     # Load configuration
     config = UnifiedConfig(config_path) if config_path else UnifiedConfig()
     
-    # Validate API keys are configured
-    model_to_use = model or config.transcription.default_model
-    if model_to_use.startswith("google") and not config.api_keys.google_api_key:
-        console.print("[red]Error: Google API key not configured[/red]")
-        console.print("Set GOOGLE_API_KEY environment variable or add to config")
-        raise typer.Exit(1)
-    elif model_to_use.startswith("openai") and not config.api_keys.openai_api_key:
-        console.print("[red]Error: OpenAI API key not configured[/red]")
-        console.print("Set OPENAI_API_KEY environment variable or add to config")
-        raise typer.Exit(1)
+    # Model will validate API keys when initialized
     
     pipeline = AudioPipeline(config)
     
@@ -114,7 +93,7 @@ def process(
     # Show processing plan
     console.print(f"\n[bold]Processing {len(files)} file(s)[/bold]")
     console.print(f"Model: {model or config.transcription.default_model}")
-    console.print(f"Workspace: {config.workspace.base_path}\n")
+    console.print(f"Workspace: {config.workspace}\n")
     
     if not Confirm.ask("Continue with processing?"):
         console.print("[yellow]Processing cancelled[/yellow]")
@@ -222,10 +201,10 @@ def config(
         console.print(Panel(
             f"[bold]Current Configuration[/bold]\n\n"
             f"[yellow]Workspace:[/yellow]\n"
-            f"  Base path: {config.workspace.base_path}\n"
-            f"  Input: {config.workspace.input_dir}\n"
-            f"  Processed: {config.workspace.processed_dir}\n"
-            f"  Transcribed: {config.workspace.transcribed_dir}\n\n"
+            f"  Path: {config.workspace}\n"
+            f"  Input: {config.input_path}\n"
+            f"  Processed: {config.processed_path}\n"
+            f"  Transcribed: {config.transcribed_path}\n\n"
             f"[yellow]Processing:[/yellow]\n"
             f"  Silence threshold: {config.processing.silence_threshold}\n"
             f"  Min silence duration: {config.processing.min_silence_duration}s\n"
@@ -248,10 +227,10 @@ def config(
 
 def _interactive_file_selection(config: UnifiedConfig) -> List[Path]:
     """Interactive file selection from input directory"""
-    audio_files = get_audio_files(config.workspace.input_path)
+    audio_files = get_audio_files(config.input_path)
     
     if not audio_files:
-        console.print(f"[yellow]No audio files found in {config.workspace.input_path}[/yellow]")
+        console.print(f"[yellow]No audio files found in {config.input_path}[/yellow]")
         return []
     
     # Display available files

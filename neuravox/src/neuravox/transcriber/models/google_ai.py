@@ -3,29 +3,42 @@ from pathlib import Path
 import tempfile
 import os
 from typing import Optional
+from dotenv import load_dotenv
 
 from .base import AudioTranscriptionModel
 from ..prompt_config import prompt_config
+
+# Load environment variables from .env file
+# First try to load from ~/.neuravox/.env (production)
+neuravox_env = Path.home() / ".neuravox" / ".env"
+if neuravox_env.exists():
+    load_dotenv(neuravox_env)
+else:
+    # Fall back to local .env for development
+    load_dotenv()
 
 
 class GoogleAIModel(AudioTranscriptionModel):
     """Google AI Studio transcription model."""
     
-    def __init__(self, model_id: str = "gemini-2.0-flash-exp", api_key: Optional[str] = None, **kwargs):
+    def __init__(self, model_id: str = "gemini-2.0-flash-exp", **kwargs):
         super().__init__(name=f"Google {model_id}", config=kwargs)
         self.model_id = model_id
-        self.api_key = api_key or os.getenv("GOOGLE_API_KEY")
         
-        if self.api_key:
-            self.client = genai.Client(api_key=self.api_key)
-            self.model = self.client.models
-        else:
-            self.client = None
-            self.model = None
+        # Always read API key from environment
+        self.api_key = os.getenv("GOOGLE_API_KEY")
+        if not self.api_key:
+            raise ValueError(
+                "Google API key not found. "
+                "Please set the GOOGLE_API_KEY environment variable."
+            )
+        
+        self.client = genai.Client(api_key=self.api_key)
+        self.model = self.client.models
     
     def is_available(self) -> bool:
         """Check if the model is available and properly configured."""
-        return self.api_key is not None and self.model is not None
+        return True  # If we got here, we have an API key
     
     async def transcribe(self, audio_path: Path) -> str:
         """

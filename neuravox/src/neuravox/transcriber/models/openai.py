@@ -2,27 +2,42 @@ from openai import AsyncOpenAI
 from pathlib import Path
 import os
 from typing import Optional
+from dotenv import load_dotenv
 
 from .base import AudioTranscriptionModel
 from ..prompt_config import prompt_config
+
+# Load environment variables from .env file
+# First try to load from ~/.neuravox/.env (production)
+from pathlib import Path as PathLib
+neuravox_env = PathLib.home() / ".neuravox" / ".env"
+if neuravox_env.exists():
+    load_dotenv(neuravox_env)
+else:
+    # Fall back to local .env for development
+    load_dotenv()
 
 
 class OpenAIModel(AudioTranscriptionModel):
     """OpenAI Whisper transcription model."""
     
-    def __init__(self, model_id: str = "whisper-1", api_key: Optional[str] = None, **kwargs):
+    def __init__(self, model_id: str = "whisper-1", **kwargs):
         super().__init__(name=f"OpenAI {model_id}", config=kwargs)
         self.model_id = model_id
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         
-        if self.api_key:
-            self.client = AsyncOpenAI(api_key=self.api_key)
-        else:
-            self.client = None
+        # Always read API key from environment
+        self.api_key = os.getenv("OPENAI_API_KEY")
+        if not self.api_key:
+            raise ValueError(
+                "OpenAI API key not found. "
+                "Please set the OPENAI_API_KEY environment variable."
+            )
+        
+        self.client = AsyncOpenAI(api_key=self.api_key)
     
     def is_available(self) -> bool:
         """Check if the model is available and properly configured."""
-        return self.api_key is not None and self.client is not None
+        return True  # If we got here, we have an API key
     
     async def transcribe(self, audio_path: Path) -> str:
         """

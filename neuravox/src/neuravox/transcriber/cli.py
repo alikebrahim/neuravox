@@ -48,7 +48,7 @@ def interactive():
         # Create project configuration
         project = ProjectConfig(
             name=project_name,
-            output_dir=config.output_dir / project_name,
+            output_dir=config.transcribed_path / project_name,
             model=model_key,
             audio_files=audio_files
         )
@@ -82,7 +82,7 @@ def transcribe(
             raise typer.Exit(1)
         
         # Get model
-        config = config_manager.config
+        config = UnifiedConfig()
         model_key = model or config.default_model
         
         if model_key not in config.models:
@@ -110,7 +110,7 @@ def transcribe(
 @app.command()
 def list_models():
     """List available transcription models."""
-    config = config_manager.config
+    config = UnifiedConfig()
     
     if not config.models:
         console.print("[yellow]No models configured.[/yellow]")
@@ -139,7 +139,7 @@ def list_models():
 @app.command()
 def list_audio():
     """List available audio files in the input directory."""
-    config = config_manager.config
+    config = UnifiedConfig()
     input_dir = config.input_dir
     
     if not input_dir.exists():
@@ -179,7 +179,7 @@ def list_audio():
 
 def select_model() -> Optional[str]:
     """Interactive model selection."""
-    config = config_manager.config
+    config = UnifiedConfig()
     
     if not config.models:
         console.print("[red]No models configured. Please check your configuration.[/red]")
@@ -214,7 +214,7 @@ def select_model() -> Optional[str]:
 def select_audio_files() -> List[Path]:
     """Interactive audio file selection."""
     config = UnifiedConfig()
-    input_dir = config.workspace.input_path
+    input_dir = config.input_path
     
     if not input_dir.exists():
         console.print(f"[red]Input directory does not exist: {input_dir}[/red]")

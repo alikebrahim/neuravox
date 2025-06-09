@@ -4,8 +4,12 @@ from typing import Optional, Dict, Any
 import torch
 import warnings
 import os
+from dotenv import load_dotenv
 
 from .base import AudioTranscriptionModel
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 class LocalWhisperModel(AudioTranscriptionModel):
@@ -27,7 +31,7 @@ class LocalWhisperModel(AudioTranscriptionModel):
         "turbo": "809M parameters - Optimized for speed"
     }
     
-    def __init__(self, model_id: str = "base", device: Optional[str] = None, **kwargs):
+    def __init__(self, model_id: str = None, device: Optional[str] = None, **kwargs):
         """
         Initialize local Whisper model.
         
@@ -36,6 +40,12 @@ class LocalWhisperModel(AudioTranscriptionModel):
             device: Device to use (cuda, cpu, or None for auto-detect)
             **kwargs: Additional configuration options
         """
+        # Use environment variables as defaults if not specified
+        if model_id is None:
+            model_id = os.getenv("WHISPER_MODEL", "base")
+        if device is None:
+            device = os.getenv("WHISPER_DEVICE", None)
+            
         # Extract just the model size from IDs like "whisper-base"
         if model_id.startswith("whisper-"):
             model_id = model_id.replace("whisper-", "")
