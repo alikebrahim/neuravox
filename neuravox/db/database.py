@@ -37,7 +37,7 @@ class DatabaseManager:
         # Default to SQLite in workspace
         db_path = self.config.workspace / "neuravox_api.db"
         database_url = f"sqlite+aiosqlite:///{db_path}"
-        self.logger.info(f"Using SQLite database", db_path=str(db_path))
+        self.logger.info(f"Using SQLite database at {str(db_path)}")
         return database_url
     
     @property
@@ -99,7 +99,7 @@ class DatabaseManager:
                 await conn.run_sync(Base.metadata.create_all)
             self.logger.info("Database tables created successfully")
         except Exception as e:
-            self.logger.error(f"Failed to create database tables", error=str(e), exc_info=True)
+            self.logger.error(f"Failed to create database tables: {str(e)}", exc_info=True)
             raise
     
     async def drop_tables(self):

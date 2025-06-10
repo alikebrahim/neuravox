@@ -14,7 +14,8 @@ from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 from neuravox.shared.config import UnifiedConfig
-from neuravox.shared.logging_config import configure_logging, get_app_logger, get_config_logger, get_db_logger, get_source_logger, PrefixFormatter
+from neuravox.shared.logging_config import configure_logging, get_app_logger, get_config_logger, get_db_logger, get_logger
+from neuravox.shared.logging_formats import PrefixFormatter
 from neuravox.db.database import get_database_manager
 from neuravox.api.routers import health, files, jobs, processing, auth, workspace
 from neuravox.api.routers import config as config_router
@@ -26,27 +27,30 @@ from neuravox.api.utils.exceptions import NeuravoxAPIException
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager"""
-    # Configure logging first
-    configure_logging(log_format="prefix")
+    # Initialize configuration first
+    project_config_path = Path(__file__).parent.parent.parent / "config.yaml"
+    config = UnifiedConfig(project_config_path if project_config_path.exists() else None)
+    
+    # Configure logging with the config object
+    configure_logging(config)
+    
+    # Get loggers
     app_logger = get_app_logger()
+    config_logger = get_config_logger()
+    db_logger = get_db_logger()
     
     # Startup
     app_logger.info("Starting Neuravox API...")
+    config_logger.info(f"Configuration loaded from {str(project_config_path) if project_config_path.exists() else 'default'}")
     
     # Initialize database
-    db_logger = get_db_logger()
     db_manager = get_database_manager()
     await db_manager.create_tables()
     db_logger.info("Database initialized")
     
-    # Ensure workspace directories exist - use project config only once
-    project_config_path = Path(__file__).parent.parent.parent / "config.yaml"
-    config = UnifiedConfig(project_config_path if project_config_path.exists() else None)
-    config_logger = get_config_logger()
-    config_logger.info("Configuration loaded", config_file=str(project_config_path) if project_config_path.exists() else "default")
-    
+    # Ensure workspace directories exist
     config.ensure_workspace_dirs()
-    config_logger.info("Workspace ready", workspace_path=str(config.workspace))
+    config_logger.info(f"Workspace ready at {str(config.workspace)}")
     
     # Store config in app state for reuse
     app.state.config = config
@@ -92,7 +96,7 @@ def create_app(config_path: Optional[Path] = None) -> FastAPI:
     # Enhanced exception handlers
     @app.exception_handler(NeuravoxAPIException)
     async def neuravox_exception_handler(request: Request, exc: NeuravoxAPIException):
-        error_logger = get_source_logger("error")
+        error_logger = get_logger("neuravox.api.error")
         request_id = get_request_id(request)
         
         # Log structured error information
@@ -126,7 +130,7 @@ def create_app(config_path: Optional[Path] = None) -> FastAPI:
     
     @app.exception_handler(Exception)
     async def general_exception_handler(request: Request, exc: Exception):
-        error_logger = get_source_logger("error")
+        error_logger = get_logger("neuravox.api.error")
         request_id = get_request_id(request)
         
         # Log unexpected errors with full context
