@@ -44,6 +44,17 @@ class ModelConfig:
     system_prompt: Optional[str] = None
 
 
+@dataclass
+class LoggingConfig:
+    """Logging configuration"""
+    format: str = "prefix"  # prefix, json, console
+    level: str = "INFO"
+    include_context: bool = True
+    file_output: Optional[str] = None
+    max_file_size_mb: int = 100
+    backup_count: int = 5
+
+
 class UnifiedConfig:
     """Simplified configuration manager for personal tool"""
     
@@ -88,6 +99,9 @@ class UnifiedConfig:
         
         # Default models
         self.models = self._get_default_models()
+        
+        # Logging defaults
+        self.logging = LoggingConfig()
     
     def _get_default_models(self) -> Dict[str, ModelConfig]:
         """Get default model configurations"""
@@ -153,6 +167,12 @@ class UnifiedConfig:
                     else:
                         # Add new model
                         self.models[model_key] = ModelConfig(**model_data)
+            
+            # Logging
+            if "logging" in data:
+                for key, value in data["logging"].items():
+                    if hasattr(self.logging, key):
+                        setattr(self.logging, key, value)
             
             # Prompts - set system_prompt for all models
             if "prompts" in data and "system_prompt" in data["prompts"]:

@@ -62,18 +62,69 @@ def add_context_processor(logger, method_name, event_dict):
 
 
 def get_log_level() -> str:
-    """Get the configured log level from environment"""
-    return os.getenv("NEURAVOX_LOG_LEVEL", "INFO").upper()
+    """Get the configured log level from environment or config"""
+    # Environment variable takes precedence
+    if level := os.getenv("NEURAVOX_LOG_LEVEL"):
+        return level.upper()
+    
+    # Try to get from config if available
+    try:
+        from neuravox.shared.config import UnifiedConfig
+        config = UnifiedConfig(validate=False)
+        return config.logging.level.upper()
+    except Exception:
+        # Fallback to default
+        return "INFO"
 
 
 def get_log_format() -> str:
-    """Get the configured log format from environment"""
-    return os.getenv("NEURAVOX_LOG_FORMAT", "prefix").lower()
+    """Get the configured log format from environment or config"""
+    # Environment variable takes precedence
+    if format_env := os.getenv("NEURAVOX_LOG_FORMAT"):
+        return format_env.lower()
+    
+    # Try to get from config if available
+    try:
+        from neuravox.shared.config import UnifiedConfig
+        config = UnifiedConfig(validate=False)
+        return config.logging.format.lower()
+    except Exception:
+        # Fallback to default
+        return "prefix"
 
 
 def should_include_context() -> bool:
     """Check if context should be included in logs"""
-    return os.getenv("NEURAVOX_LOG_CONTEXT", "true").lower() == "true"
+    # Environment variable takes precedence
+    if context_env := os.getenv("NEURAVOX_LOG_CONTEXT"):
+        return context_env.lower() == "true"
+    
+    # Try to get from config if available
+    try:
+        from neuravox.shared.config import UnifiedConfig
+        config = UnifiedConfig(validate=False)
+        return config.logging.include_context
+    except Exception:
+        # Fallback to default
+        return True
+
+
+def get_log_file() -> Optional[Path]:
+    """Get log file path from environment or config"""
+    # Environment variable takes precedence
+    if file_env := os.getenv("NEURAVOX_LOG_FILE"):
+        return Path(file_env)
+    
+    # Try to get from config if available
+    try:
+        from neuravox.shared.config import UnifiedConfig
+        config = UnifiedConfig(validate=False)
+        if config.logging.file_output:
+            return Path(config.logging.file_output)
+    except Exception:
+        pass
+    
+    return None
 
 
 def get_source_logger(source: str, include_context: bool = None) -> logging.Logger:
@@ -180,10 +231,10 @@ def configure_logging(
         component: Component name for logger identification
     """
     
-    # Get configuration from environment or defaults
+    # Get configuration from environment, config file, or defaults
     log_level = log_level or get_log_level()
     log_format = log_format or get_log_format()
-    log_file = log_file or (Path(os.getenv("NEURAVOX_LOG_FILE", "")) if os.getenv("NEURAVOX_LOG_FILE") else None)
+    log_file = log_file or get_log_file()
     
     # Clear any existing handlers to prevent duplicates
     logging.getLogger().handlers.clear()

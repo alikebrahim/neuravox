@@ -74,3 +74,12 @@ pipeline:
   mode: sequential
   keep_intermediate: true
   resume_on_failure: true
+
+# Logging configuration
+logging:
+  format: prefix  # prefix, json, console
+  level: INFO     # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  include_context: true
+  file_output: null  # Optional log file path
+  max_file_size_mb: 100
+  backup_count: 5
