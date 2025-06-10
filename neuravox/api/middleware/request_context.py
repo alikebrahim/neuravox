@@ -7,15 +7,15 @@ from typing import Callable
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from neuravox.shared.logging_config import get_logger, set_request_context, clear_request_context
+from neuravox.shared.logging_config import get_req_logger, set_request_context, clear_request_context
 
 
 class RequestContextMiddleware(BaseHTTPMiddleware):
     """Middleware to add request ID tracking and logging context"""
     
-    def __init__(self, app, logger_name: str = "neuravox.api"):
+    def __init__(self, app):
         super().__init__(app)
-        self.logger = get_logger(logger_name)
+        self.logger = get_req_logger()
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # Generate unique request ID
@@ -29,15 +29,13 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         start_time = time.time()
         
         # Log request start
+        client_ip = getattr(request.client, 'host', None) if request.client else 'unknown'
+        user_agent = request.headers.get("user-agent", "unknown")
+        query_str = f"?{request.url.query}" if request.url.query else ""
+        
         self.logger.info(
-            "request_started",
-            method=request.method,
-            url=str(request.url),
-            path=request.url.path,
-            query_params=dict(request.query_params),
-            user_agent=request.headers.get("user-agent"),
-            client_ip=getattr(request.client, 'host', None) if request.client else None,
-            request_id=request_id
+            f"Request started: {request.method} {request.url.path}{query_str} "
+            f"from {client_ip} ({user_agent}) [{request_id}]"
         )
         
         try:
@@ -49,10 +47,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             
             # Log successful request completion
             self.logger.info(
-                "request_completed",
-                status_code=response.status_code,
-                duration_seconds=round(duration, 3),
-                request_id=request_id
+                f"Request completed: {response.status_code} in {round(duration, 3)}s [{request_id}]"
             )
             
             # Add request ID to response headers for debugging
@@ -66,11 +61,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             
             # Log request failure
             self.logger.error(
-                "request_failed",
-                error=str(e),
-                error_type=type(e).__name__,
-                duration_seconds=round(duration, 3),
-                request_id=request_id,
+                f"Request failed: {type(e).__name__}: {str(e)} after {round(duration, 3)}s [{request_id}]",
                 exc_info=True
             )
             

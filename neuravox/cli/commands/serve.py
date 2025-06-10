@@ -4,11 +4,9 @@ from pathlib import Path
 from typing import Optional
 
 import typer
-from rich.console import Console
 
 from neuravox.api.main import run_server
-
-console = Console()
+from neuravox.shared.logging_config import get_cli_logger
 
 
 def serve_command(
@@ -19,17 +17,17 @@ def serve_command(
     config_path: Optional[Path] = typer.Option(None, "--config", "-c", help="Configuration file path")
 ):
     """Start the Neuravox API server"""
+    logger = get_cli_logger()
     
-    console.print(f"[bold green]Starting Neuravox API server[/bold green]")
-    console.print(f"Host: {host}")
-    console.print(f"Port: {port}")
-    console.print(f"Workers: {workers}")
-    console.print(f"Reload: {reload}")
+    # Structured startup logging
+    logger.info("Starting Neuravox API server")
+    logger.info(f"Configuration: host={host} port={port} workers={workers} reload={reload}")
+    
     if config_path:
-        console.print(f"Config: {config_path}")
+        logger.info(f"Using config file: {config_path}")
     
-    console.print(f"\n[dim]API will be available at: http://{host}:{port}/api/docs[/dim]")
-    console.print(f"[dim]Health check: http://{host}:{port}/api/v1/health[/dim]\n")
+    logger.info(f"API documentation: http://{host}:{port}/api/docs")
+    logger.info(f"Health check: http://{host}:{port}/api/v1/health")
     
     try:
         run_server(
@@ -40,7 +38,7 @@ def serve_command(
             config_path=config_path
         )
     except KeyboardInterrupt:
-        console.print("\n[yellow]Server stopped by user[/yellow]")
+        logger.info("Server stopped by user")
     except Exception as e:
-        console.print(f"\n[red]Server failed to start: {e}[/red]")
+        logger.error(f"Server failed to start: {e}")
         raise typer.Exit(1)

@@ -1,6 +1,8 @@
 """Main FastAPI application for Neuravox API"""
 
 import os
+import sys
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
@@ -12,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 from neuravox.shared.config import UnifiedConfig
-from neuravox.shared.logging_config import configure_logging, get_logger
+from neuravox.shared.logging_config import configure_logging, get_app_logger, get_config_logger, get_db_logger, get_source_logger, PrefixFormatter
 from neuravox.db.database import get_database_manager
 from neuravox.api.routers import health, files, jobs, processing, auth, workspace
 from neuravox.api.routers import config as config_router
@@ -25,27 +27,34 @@ from neuravox.api.utils.exceptions import NeuravoxAPIException
 async def lifespan(app: FastAPI):
     """Application lifespan manager"""
     # Configure logging first
-    configure_logging(component="neuravox.api")
-    logger = get_logger("neuravox.api.startup")
+    configure_logging(log_format="prefix")
+    app_logger = get_app_logger()
     
     # Startup
-    logger.info("Starting Neuravox API...")
+    app_logger.info("Starting Neuravox API...")
     
     # Initialize database
+    db_logger = get_db_logger()
     db_manager = get_database_manager()
     await db_manager.create_tables()
-    logger.info("Database initialized")
+    db_logger.info("Database initialized")
     
-    # Ensure workspace directories exist - use project config
+    # Ensure workspace directories exist - use project config only once
     project_config_path = Path(__file__).parent.parent.parent / "config.yaml"
     config = UnifiedConfig(project_config_path if project_config_path.exists() else None)
+    config_logger = get_config_logger()
+    config_logger.info("Configuration loaded", config_file=str(project_config_path) if project_config_path.exists() else "default")
+    
     config.ensure_workspace_dirs()
-    logger.info("Workspace ready", workspace_path=str(config.workspace))
+    config_logger.info("Workspace ready", workspace_path=str(config.workspace))
+    
+    # Store config in app state for reuse
+    app.state.config = config
     
     yield
     
     # Shutdown
-    logger.info("Shutting down Neuravox API...")
+    app_logger.info("Shutting down Neuravox API...")
     await db_manager.close()
 
 
@@ -62,9 +71,8 @@ def create_app(config_path: Optional[Path] = None) -> FastAPI:
         openapi_url="/api/openapi.json"
     )
     
-    # Load configuration
-    config = UnifiedConfig(config_path) if config_path else UnifiedConfig()
-    app.state.config = config
+    # Configuration will be loaded in lifespan manager and stored in app.state
+    # This prevents duplicate configuration loading
     
     # Configure CORS
     app.add_middleware(
@@ -84,20 +92,21 @@ def create_app(config_path: Optional[Path] = None) -> FastAPI:
     # Enhanced exception handlers
     @app.exception_handler(NeuravoxAPIException)
     async def neuravox_exception_handler(request: Request, exc: NeuravoxAPIException):
-        logger = get_logger("neuravox.api.error")
+        error_logger = get_source_logger("error")
         request_id = get_request_id(request)
         
         # Log structured error information
-        logger.warning(
-            "api_exception",
-            error_type=exc.error_type,
-            message=exc.message,
-            details=exc.details,
-            status_code=exc.status_code,
-            operation=exc.operation,
-            request_id=request_id,
-            path=request.url.path,
-            method=request.method
+        error_logger.warning(
+            f"API exception: {exc.message}",
+            extra={
+                'extra_context': {
+                    'error_type': exc.error_type,
+                    'status_code': exc.status_code,
+                    'operation': exc.operation,
+                    'path': request.url.path,
+                    'method': request.method
+                }
+            }
         )
         
         # Determine if debug info should be included
@@ -117,17 +126,19 @@ def create_app(config_path: Optional[Path] = None) -> FastAPI:
     
     @app.exception_handler(Exception)
     async def general_exception_handler(request: Request, exc: Exception):
-        logger = get_logger("neuravox.api.error")
+        error_logger = get_source_logger("error")
         request_id = get_request_id(request)
         
         # Log unexpected errors with full context
-        logger.error(
-            "unexpected_exception",
-            error=str(exc),
-            error_type=type(exc).__name__,
-            request_id=request_id,
-            path=request.url.path,
-            method=request.method,
+        error_logger.error(
+            f"Unexpected exception: {str(exc)}",
+            extra={
+                'extra_context': {
+                    'error_type': type(exc).__name__,
+                    'path': request.url.path,
+                    'method': request.method
+                }
+            },
             exc_info=True
         )
         
@@ -179,6 +190,39 @@ def get_cors_origins() -> list[str]:
     return [origin.strip() for origin in origins_env.split(",")]
 
 
+def configure_uvicorn_logging():
+    """Configure uvicorn to use prefix-based logging"""
+    # Configure uvicorn loggers to use our prefix format
+    uvicorn_logger = logging.getLogger("uvicorn")
+    uvicorn_access = logging.getLogger("uvicorn.access")
+    uvicorn_error = logging.getLogger("uvicorn.error")
+    
+    # Clear existing handlers
+    uvicorn_logger.handlers.clear()
+    uvicorn_access.handlers.clear() 
+    uvicorn_error.handlers.clear()
+    
+    # Add prefix handlers
+    server_handler = logging.StreamHandler(sys.stdout)
+    server_formatter = PrefixFormatter("server")
+    server_handler.setFormatter(server_formatter)
+    
+    uvicorn_logger.addHandler(server_handler)
+    uvicorn_access.addHandler(server_handler)
+    uvicorn_error.addHandler(server_handler)
+    
+    # Set log levels
+    log_level = os.getenv("NEURAVOX_LOG_LEVEL", "INFO").upper()
+    uvicorn_logger.setLevel(getattr(logging, log_level))
+    uvicorn_access.setLevel(getattr(logging, log_level))
+    uvicorn_error.setLevel(getattr(logging, log_level))
+    
+    # Prevent propagation to avoid duplicates
+    uvicorn_logger.propagate = False
+    uvicorn_access.propagate = False
+    uvicorn_error.propagate = False
+
+
 def run_server(
     host: str = "0.0.0.0",
     port: int = 8000,
@@ -186,7 +230,10 @@ def run_server(
     reload: bool = False,
     config_path: Optional[Path] = None
 ):
-    """Run the API server"""
+    """Run the API server with prefix-based logging"""
+    # Configure uvicorn logging first
+    configure_uvicorn_logging()
+    
     app = create_app(config_path)
     
     uvicorn.run(
@@ -195,8 +242,8 @@ def run_server(
         port=port,
         workers=workers if not reload else 1,  # reload only works with 1 worker
         reload=reload,
-        access_log=True,
-        log_level="info"
+        log_config=None,  # Disable uvicorn's log config
+        access_log=False  # We handle access logging in middleware
     )
 
 
