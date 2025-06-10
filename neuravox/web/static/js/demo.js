@@ -112,7 +112,7 @@ class NeuravoxDemo {
             await this.uploadFile(file);
             this.showSection('config');
         } catch (error) {
-            this.showError(`Upload failed: ${error.message}`);
+            this.showEnhancedError(error, 'File Upload');
         }
     }
 
@@ -167,7 +167,7 @@ class NeuravoxDemo {
             this.startJobPolling(jobResponse.job_id);
             
         } catch (error) {
-            this.showError(`Failed to start processing: ${error.message}`);
+            this.showEnhancedError(error, 'Start Processing');
         }
     }
 
@@ -299,7 +299,7 @@ class NeuravoxDemo {
             this.displayResults(jobDetails);
             this.showSection('results');
         } catch (error) {
-            this.showError(`Failed to load results: ${error.message}`);
+            this.showEnhancedError(error, 'Load Results');
         }
     }
 
@@ -383,7 +383,7 @@ class NeuravoxDemo {
                 this.downloadBlob(blob, file.filename);
             }
         } catch (error) {
-            this.showError(`Download failed: ${error.message}`);
+            this.showEnhancedError(error, 'Download Transcript');
         }
     }
 
@@ -409,7 +409,7 @@ class NeuravoxDemo {
                 this.downloadBlob(blob, file.filename);
             }
         } catch (error) {
-            this.showError(`Download failed: ${error.message}`);
+            this.showEnhancedError(error, 'Download Audio Files');
         }
     }
 
@@ -493,59 +493,267 @@ class NeuravoxDemo {
     }
 
     /**
-     * Show error message
+     * Show simple error message (legacy method)
      */
     showError(message) {
+        this.showEnhancedError({ message, type: 'simple_error' }, 'General');
+    }
+    
+    /**
+     * Show enhanced error message with debugging information
+     */
+    showEnhancedError(error, operation) {
+        // Determine error type and message
+        let errorType = 'error';
+        let errorMessage = 'An unknown error occurred';
+        let errorDetails = {};
+        let retryable = false;
+        
+        if (error.isEnhanced) {
+            errorType = error.type;
+            errorMessage = error.message;
+            errorDetails = {
+                requestId: error.requestId,
+                serverRequestId: error.serverRequestId,
+                status: error.status,
+                endpoint: error.endpoint,
+                duration: error.duration,
+                details: error.details
+            };
+            retryable = error.retryable;
+        } else if (error.message) {
+            errorMessage = error.message;
+        } else if (typeof error === 'string') {
+            errorMessage = error;
+        }
+        
         // Create error notification
         const errorDiv = document.createElement('div');
-        errorDiv.className = 'error-notification';
+        errorDiv.className = 'error-notification enhanced';
+        
+        const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        
         errorDiv.innerHTML = `
             <div class="error-content">
-                <span class="error-icon">⚠️</span>
-                <span class="error-message">${message}</span>
-                <button class="error-close" onclick="this.parentElement.parentElement.remove()">×</button>
+                <div class="error-header">
+                    <span class="error-icon">${this._getErrorIcon(errorType)}</span>
+                    <span class="error-title">${operation} Failed</span>
+                    <button class="error-close" onclick="this.parentElement.parentElement.parentElement.remove()">×</button>
+                </div>
+                <div class="error-message">${errorMessage}</div>
+                ${retryable ? '<div class="error-retry">This error may be temporary. You can try again.</div>' : ''}
+                ${isDevelopment ? this._createErrorDetails(errorDetails) : ''}
+                <div class="error-actions">
+                    ${retryable ? '<button class="retry-btn" onclick="window.demo._retryLastOperation()">Retry</button>' : ''}
+                    ${isDevelopment ? '<button class="debug-btn" onclick="window.demo._showDebugInfo()">Debug Info</button>' : ''}
+                    <button class="export-btn" onclick="window.demo.api.exportRequestHistory()">Export Logs</button>
+                </div>
             </div>
         `;
         
-        // Add styles
+        // Add enhanced styles
         errorDiv.style.cssText = `
             position: fixed;
             top: 2rem;
             right: 2rem;
-            background: var(--error-color);
+            background: var(--error-color, #dc3545);
             color: white;
             padding: 1rem;
-            border-radius: var(--radius);
-            box-shadow: var(--shadow-lg);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
             z-index: 1000;
-            max-width: 400px;
+            max-width: 450px;
+            font-family: system-ui, -apple-system, sans-serif;
         `;
         
-        errorDiv.querySelector('.error-content').style.cssText = `
+        // Style error header
+        const errorHeader = errorDiv.querySelector('.error-header');
+        errorHeader.style.cssText = `
             display: flex;
             align-items: center;
             gap: 0.75rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
         `;
         
-        errorDiv.querySelector('.error-close').style.cssText = `
+        // Style close button
+        const closeBtn = errorDiv.querySelector('.error-close');
+        closeBtn.style.cssText = `
             background: none;
             border: none;
             color: white;
             font-size: 1.25rem;
             cursor: pointer;
             margin-left: auto;
+            padding: 0.25rem;
         `;
+        
+        // Style action buttons
+        const actionBtns = errorDiv.querySelectorAll('.error-actions button');
+        actionBtns.forEach(btn => {
+            btn.style.cssText = `
+                background: rgba(255,255,255,0.2);
+                border: 1px solid rgba(255,255,255,0.3);
+                color: white;
+                padding: 0.4rem 0.8rem;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 0.85rem;
+                margin-right: 0.5rem;
+                margin-top: 0.5rem;
+            `;
+            
+            btn.addEventListener('mouseenter', () => {
+                btn.style.background = 'rgba(255,255,255,0.3)';
+            });
+            
+            btn.addEventListener('mouseleave', () => {
+                btn.style.background = 'rgba(255,255,255,0.2)';
+            });
+        });
         
         document.body.appendChild(errorDiv);
         
-        // Auto-remove after 5 seconds
+        // Auto-remove after 10 seconds (longer for enhanced errors)
         setTimeout(() => {
             if (errorDiv.parentElement) {
                 errorDiv.remove();
             }
-        }, 5000);
+        }, 10000);
         
-        console.error('Demo Error:', message);
+        // Store error for retry functionality
+        this.lastError = { error, operation };
+        
+        console.error('Enhanced Demo Error:', {
+            operation,
+            type: errorType,
+            message: errorMessage,
+            details: errorDetails,
+            retryable
+        });
+    }
+    
+    _getErrorIcon(errorType) {
+        const icons = {
+            'network_error': '🌐',
+            'validation_error': '⚠️',
+            'authentication_error': '🔒',
+            'processing_error': '⚙️',
+            'not_found': '❓',
+            'rate_limit_error': '⏱️',
+            'service_unavailable': '🚫',
+            'simple_error': '⚠️'
+        };
+        return icons[errorType] || '❌';
+    }
+    
+    _createErrorDetails(details) {
+        if (!details || Object.keys(details).length === 0) {
+            return '';
+        }
+        
+        const filteredDetails = Object.entries(details)
+            .filter(([key, value]) => value !== undefined && value !== null)
+            .map(([key, value]) => `<div><strong>${key}:</strong> ${value}</div>`)
+            .join('');
+        
+        return `
+            <details class="error-details" style="margin-top: 0.5rem; font-size: 0.85rem; opacity: 0.9;">
+                <summary style="cursor: pointer; margin-bottom: 0.25rem;">Technical Details</summary>
+                <div style="margin-left: 1rem;">${filteredDetails}</div>
+            </details>
+        `;
+    }
+    
+    _retryLastOperation() {
+        if (!this.lastError) {
+            console.warn('No operation to retry');
+            return;
+        }
+        
+        const { operation } = this.lastError;
+        
+        // Simple retry logic - could be enhanced based on operation type
+        if (operation === 'File Upload' && this.currentFile) {
+            this.uploadFile(this.currentFile);
+        } else if (operation === 'Start Processing') {
+            this.startProcessing();
+        } else {
+            console.warn('Retry not implemented for operation:', operation);
+        }
+    }
+    
+    _showDebugInfo() {
+        const debugInfo = {
+            currentState: {
+                currentFile: this.currentFile ? {
+                    name: this.currentFile.name,
+                    size: this.currentFile.size,
+                    type: this.currentFile.type
+                } : null,
+                uploadedFileId: this.uploadedFileId,
+                currentJob: this.currentJob
+            },
+            apiHistory: this.api.getRequestHistory().slice(0, 10), // Last 10 requests
+            lastError: this.lastError,
+            userAgent: navigator.userAgent,
+            url: window.location.href,
+            timestamp: new Date().toISOString()
+        };
+        
+        console.group('🐛 Neuravox Debug Information');
+        console.log('Current State:', debugInfo.currentState);
+        console.log('Recent API Requests:', debugInfo.apiHistory);
+        console.log('Last Error:', debugInfo.lastError);
+        console.log('Environment:', {
+            userAgent: debugInfo.userAgent,
+            url: debugInfo.url
+        });
+        console.groupEnd();
+        
+        // Also show in a modal for easier copying
+        const debugText = JSON.stringify(debugInfo, null, 2);
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `;
+        
+        modal.innerHTML = `
+            <div style="
+                background: white;
+                padding: 2rem;
+                border-radius: 8px;
+                max-width: 80vw;
+                max-height: 80vh;
+                overflow: auto;
+                color: #333;
+            ">
+                <h3>Debug Information</h3>
+                <textarea readonly style="
+                    width: 100%;
+                    height: 400px;
+                    font-family: monospace;
+                    font-size: 12px;
+                    border: 1px solid #ccc;
+                    padding: 1rem;
+                ">${debugText}</textarea>
+                <div style="margin-top: 1rem; text-align: right;">
+                    <button onclick="navigator.clipboard.writeText('${debugText.replace(/'/g, "\\'")}')">Copy to Clipboard</button>
+                    <button onclick="this.parentElement.parentElement.parentElement.remove()">Close</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
     }
 }
 

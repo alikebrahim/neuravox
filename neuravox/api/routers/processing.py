@@ -1,6 +1,8 @@
 """Audio processing and transcription endpoints"""
 
 import asyncio
+import uuid
+from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
@@ -8,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from neuravox.db.database import get_db_session
 from neuravox.shared.config import UnifiedConfig
+from neuravox.shared.logging_config import get_logger, LoggingContextManager
 from neuravox.api.services.job_service import JobService
 from neuravox.api.services.pipeline_service import PipelineService
 from neuravox.api.models.requests import (
@@ -15,7 +18,7 @@ from neuravox.api.models.requests import (
 )
 from neuravox.api.models.responses import CreateJobResponse
 from neuravox.api.models.enums import JobType
-from neuravox.api.utils.exceptions import ValidationError
+from neuravox.api.utils.exceptions import ValidationError, ProcessingError
 from neuravox.api.middleware.auth import get_current_user_id
 
 
@@ -24,27 +27,98 @@ router = APIRouter()
 
 def get_job_service() -> JobService:
     """Dependency for job service"""
-    config = UnifiedConfig()
+    project_config_path = Path(__file__).parent.parent.parent.parent / "config.yaml"
+    config = UnifiedConfig(project_config_path if project_config_path.exists() else None)
     return JobService(config)
 
 
 def get_pipeline_service() -> PipelineService:
     """Dependency for pipeline service"""
-    config = UnifiedConfig()
+    project_config_path = Path(__file__).parent.parent.parent.parent / "config.yaml"
+    config = UnifiedConfig(project_config_path if project_config_path.exists() else None)
     return PipelineService(config)
 
 
 async def process_job_background(job_id: str, pipeline_service: PipelineService):
-    """Background task for processing jobs"""
-    from neuravox.db.database import get_database_manager
+    """Background task for processing jobs with comprehensive error handling"""
+    logger = get_logger("neuravox.api.background")
+    operation_id = str(uuid.uuid4())
     
-    db_manager = get_database_manager()
-    async for db in db_manager.get_session():
+    # Set up logging context for background processing
+    with LoggingContextManager(job_id=job_id, operation_id=operation_id):
+        logger.info(
+            "background_job_started",
+            job_id=job_id,
+            operation_id=operation_id
+        )
+        
+        from neuravox.db.database import get_database_manager
+        
+        db_manager = get_database_manager()
+        
         try:
-            await pipeline_service.process_job(job_id, db)
+            async for db in db_manager.get_session():
+                try:
+                    await pipeline_service.process_job(job_id, db)
+                    
+                    logger.info(
+                        "background_job_completed",
+                        job_id=job_id,
+                        operation_id=operation_id
+                    )
+                    
+                except (ValidationError, ProcessingError) as e:
+                    # Expected errors - already logged by pipeline service
+                    logger.warning(
+                        "background_job_failed_expected",
+                        job_id=job_id,
+                        error_type=type(e).__name__,
+                        error_message=str(e),
+                        operation_id=operation_id
+                    )
+                    
+                except Exception as e:
+                    # Unexpected errors in background processing
+                    logger.error(
+                        "background_job_failed_unexpected",
+                        job_id=job_id,
+                        error_type=type(e).__name__,
+                        error_message=str(e),
+                        operation_id=operation_id,
+                        exc_info=True
+                    )
+                    
+                    # Try to update job status if possible
+                    try:
+                        from neuravox.api.models.enums import JobStatus
+                        job_service = JobService(pipeline_service.config)
+                        await job_service.update_job_status(
+                            job_id,
+                            JobStatus.FAILED,
+                            error_message=f"Background processing failed: {str(e)}",
+                            error_context={"background_error": True, "operation_id": operation_id},
+                            db=db
+                        )
+                    except Exception as update_error:
+                        logger.error(
+                            "failed_to_update_background_job_status",
+                            job_id=job_id,
+                            update_error=str(update_error),
+                            original_error=str(e)
+                        )
+                
+                break  # Exit the async generator loop
+                
         except Exception as e:
-            print(f"Background job {job_id} failed: {e}")
-        break
+            # Database connection or other infrastructure errors
+            logger.critical(
+                "background_job_infrastructure_failure",
+                job_id=job_id,
+                error_type=type(e).__name__,
+                error_message=str(e),
+                operation_id=operation_id,
+                exc_info=True
+            )
 
 
 @router.post("/process", response_model=CreateJobResponse, status_code=202)

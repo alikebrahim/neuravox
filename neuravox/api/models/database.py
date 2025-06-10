@@ -29,6 +29,7 @@ class Job(Base):
     user_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     config_override: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    error_context: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     progress_percent: Mapped[int] = mapped_column(Integer, default=0)
     result_data: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     

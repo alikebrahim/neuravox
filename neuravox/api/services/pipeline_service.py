@@ -3,6 +3,7 @@
 import asyncio
 import json
 import time
+import traceback
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Callable
 
@@ -11,11 +12,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from neuravox.core.pipeline import AudioPipeline
 from neuravox.shared.config import UnifiedConfig
 from neuravox.shared.file_utils import create_file_id
+from neuravox.shared.logging_config import get_logger, LoggingContextManager
 from neuravox.api.models.database import Job, File, JobFile
 from neuravox.api.models.enums import JobStatus, JobType, FileRole
 from neuravox.api.services.job_service import JobService
 from neuravox.api.services.file_service import FileService
-from neuravox.api.utils.exceptions import ProcessingError
+from neuravox.api.utils.exceptions import ProcessingError, ValidationError, ConfigurationError
 
 
 class PipelineService:
@@ -25,76 +27,213 @@ class PipelineService:
         self.config = config
         self.job_service = JobService(config)
         self.file_service = FileService(config)
+        self.logger = get_logger("neuravox.api.pipeline")
+        self._current_stage = "initialization"
     
     async def process_job(self, job_id: str, db: AsyncSession) -> Dict[str, Any]:
         """Process a job through the appropriate pipeline"""
         
-        try:
-            # Get job details
-            job = await self.job_service.get_job(job_id, db)
+        # Set up logging context
+        with LoggingContextManager(job_id=job_id, operation_id="process_job"):
+            self.logger.info("job_processing_started", job_id=job_id)
             
-            if job.status != JobStatus.PENDING:
-                raise ProcessingError(f"Job {job_id} is not in pending status")
+            job = None
+            input_paths = []
             
-            # Update job to processing
-            await self.job_service.update_job_status(
-                job_id, JobStatus.PROCESSING, progress_percent=0, db=db
-            )
-            
-            # Get input files
-            files_by_role = await self.job_service.get_job_files(job_id, db)
-            input_files = files_by_role.get(FileRole.INPUT, [])
-            
-            if not input_files:
-                raise ProcessingError("No input files found for job")
-            
-            # Convert file records to paths
-            input_paths = [Path(f.file_path) for f in input_files]
-            
-            # Validate files exist
-            for path in input_paths:
-                if not path.exists():
-                    raise ProcessingError(f"Input file not found: {path}")
-            
-            # Create progress callback
-            progress_callback = self._create_progress_callback(job_id, db)
-            
-            # Process based on job type
-            if job.job_type == JobType.PROCESS:
-                result = await self._process_audio_only(
-                    job, input_paths, progress_callback, db
+            try:
+                self._current_stage = "job_validation"
+                
+                # Get job details
+                job = await self.job_service.get_job(job_id, db)
+                
+                if job.status != JobStatus.PENDING:
+                    raise ValidationError(
+                        f"Job {job_id} is not in pending status",
+                        details={"current_status": job.status.value, "expected_status": "pending"}
+                    )
+                
+                self.logger.info(
+                    "job_validated",
+                    job_type=job.job_type.value,
+                    status=job.status.value
                 )
-            elif job.job_type == JobType.TRANSCRIBE:
-                result = await self._transcribe_only(
-                    job, input_paths, progress_callback, db
+                
+                self._current_stage = "status_update"
+                
+                # Update job to processing
+                await self.job_service.update_job_status(
+                    job_id, JobStatus.PROCESSING, progress_percent=0, db=db
                 )
-            elif job.job_type == JobType.PIPELINE:
-                result = await self._full_pipeline(
-                    job, input_paths, progress_callback, db
+                
+                self._current_stage = "file_preparation"
+                
+                # Get input files
+                files_by_role = await self.job_service.get_job_files(job_id, db)
+                input_files = files_by_role.get(FileRole.INPUT, [])
+                
+                if not input_files:
+                    raise ValidationError(
+                        "No input files found for job",
+                        details={"job_id": job_id, "available_roles": list(files_by_role.keys())}
+                    )
+                
+                # Convert file records to paths
+                input_paths = [Path(f.file_path) for f in input_files]
+                
+                self.logger.info(
+                    "input_files_prepared",
+                    file_count=len(input_paths),
+                    file_paths=[str(p) for p in input_paths]
                 )
-            else:
-                raise ProcessingError(f"Unknown job type: {job.job_type}")
+                
+                # Validate files exist
+                self._current_stage = "file_validation"
+                missing_files = []
+                for path in input_paths:
+                    if not path.exists():
+                        missing_files.append(str(path))
+                
+                if missing_files:
+                    raise ValidationError(
+                        f"Input files not found",
+                        details={
+                            "missing_files": missing_files,
+                            "workspace": str(self.config.workspace)
+                        }
+                    )
+                
+                # Create progress callback
+                progress_callback = self._create_progress_callback(job_id, db)
+                
+                # Process based on job type
+                self._current_stage = "pipeline_execution"
+                
+                if job.job_type == JobType.PROCESS:
+                    result = await self._process_audio_only(
+                        job, input_paths, progress_callback, db
+                    )
+                elif job.job_type == JobType.TRANSCRIBE:
+                    result = await self._transcribe_only(
+                        job, input_paths, progress_callback, db
+                    )
+                elif job.job_type == JobType.PIPELINE:
+                    result = await self._full_pipeline(
+                        job, input_paths, progress_callback, db
+                    )
+                else:
+                    raise ValidationError(
+                        f"Unknown job type: {job.job_type}",
+                        details={"supported_types": [t.value for t in JobType]}
+                    )
+                
+                self._current_stage = "completion"
+                
+                # Mark job as completed
+                await self.job_service.update_job_status(
+                    job_id,
+                    JobStatus.COMPLETED,
+                    progress_percent=100,
+                    result_data=result,
+                    db=db
+                )
+                
+                self.logger.info(
+                    "job_processing_completed",
+                    job_id=job_id,
+                    result_summary=result.get("summary", {})
+                )
+                
+                return result
             
-            # Mark job as completed
-            await self.job_service.update_job_status(
-                job_id,
-                JobStatus.COMPLETED,
-                progress_percent=100,
-                result_data=result,
-                db=db
-            )
-            
-            return result
+            except (ValidationError, ProcessingError, ConfigurationError) as e:
+                # These are expected errors with good context
+                error_context = self._build_error_context(job, input_paths, e)
+                
+                self.logger.warning(
+                    "job_processing_failed",
+                    error_type=type(e).__name__,
+                    error_message=str(e),
+                    **error_context
+                )
+                
+                await self._update_job_failure(job_id, str(e), error_context, db)
+                raise
+                
+            except Exception as e:
+                # Unexpected errors - preserve full context
+                error_context = self._build_error_context(job, input_paths, e)
+                error_context["traceback"] = traceback.format_exc()
+                
+                self.logger.error(
+                    "job_processing_unexpected_error",
+                    error_type=type(e).__name__,
+                    error_message=str(e),
+                    exc_info=True,
+                    **error_context
+                )
+                
+                await self._update_job_failure(job_id, str(e), error_context, db)
+                
+                raise ProcessingError(
+                    f"Job processing failed: {str(e)}",
+                    details=error_context,
+                    operation="process_job",
+                    preserve_traceback=True
+                )
+    
+    def _build_error_context(self, job: Optional[Job], input_paths: List[Path], error: Exception) -> Dict[str, Any]:
+        """Build comprehensive error context for debugging"""
+        context = {
+            "stage": self._current_stage,
+            "error_type": type(error).__name__,
+            "timestamp": time.time(),
+            "config": {
+                "workspace": str(self.config.workspace),
+                "processing": {
+                    "silence_threshold": self.config.processing.silence_threshold,
+                    "min_silence_duration": self.config.processing.min_silence_duration
+                }
+            }
+        }
         
-        except Exception as e:
-            # Mark job as failed
+        if job:
+            context["job"] = {
+                "id": job.id,
+                "type": job.job_type.value,
+                "status": job.status.value,
+                "created_at": job.created_at.isoformat() if job.created_at else None,
+                "config_override": job.config_override
+            }
+        
+        if input_paths:
+            context["input_files"] = [
+                {
+                    "path": str(path),
+                    "exists": path.exists(),
+                    "size": path.stat().st_size if path.exists() else None
+                }
+                for path in input_paths
+            ]
+        
+        return context
+    
+    async def _update_job_failure(self, job_id: str, error_message: str, error_context: Dict[str, Any], db: AsyncSession):
+        """Update job status with failure information"""
+        try:
             await self.job_service.update_job_status(
                 job_id,
                 JobStatus.FAILED,
-                error_message=str(e),
+                error_message=error_message,
+                error_context=error_context,
                 db=db
             )
-            raise ProcessingError(f"Job processing failed: {str(e)}")
+        except Exception as update_error:
+            self.logger.error(
+                "failed_to_update_job_status",
+                job_id=job_id,
+                update_error=str(update_error),
+                original_error=error_message
+            )
     
     async def _process_audio_only(
         self,

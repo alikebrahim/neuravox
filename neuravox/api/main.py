@@ -12,34 +12,40 @@ from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 from neuravox.shared.config import UnifiedConfig
+from neuravox.shared.logging_config import configure_logging, get_logger
 from neuravox.db.database import get_database_manager
 from neuravox.api.routers import health, files, jobs, processing, auth, workspace
 from neuravox.api.routers import config as config_router
 from neuravox.api.middleware.rate_limit import RateLimitMiddleware
+from neuravox.api.middleware.request_context import RequestContextMiddleware, get_request_id
 from neuravox.api.utils.exceptions import NeuravoxAPIException
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager"""
+    # Configure logging first
+    configure_logging(component="neuravox.api")
+    logger = get_logger("neuravox.api.startup")
+    
     # Startup
-    print("Starting Neuravox API...")
+    logger.info("Starting Neuravox API...")
     
     # Initialize database
     db_manager = get_database_manager()
     await db_manager.create_tables()
-    print("Database initialized")
+    logger.info("Database initialized")
     
     # Ensure workspace directories exist - use project config
     project_config_path = Path(__file__).parent.parent.parent / "config.yaml"
     config = UnifiedConfig(project_config_path if project_config_path.exists() else None)
     config.ensure_workspace_dirs()
-    print(f"Workspace ready at: {config.workspace}")
+    logger.info("Workspace ready", workspace_path=str(config.workspace))
     
     yield
     
     # Shutdown
-    print("Shutting down Neuravox API...")
+    logger.info("Shutting down Neuravox API...")
     await db_manager.close()
 
 
@@ -69,30 +75,79 @@ def create_app(config_path: Optional[Path] = None) -> FastAPI:
         allow_headers=["*"],
     )
     
+    # Add request context middleware (first, to set up context)
+    app.add_middleware(RequestContextMiddleware)
+    
     # Add rate limiting middleware
     app.add_middleware(RateLimitMiddleware, default_rate_limit=60)
     
-    # Exception handlers
+    # Enhanced exception handlers
     @app.exception_handler(NeuravoxAPIException)
     async def neuravox_exception_handler(request: Request, exc: NeuravoxAPIException):
+        logger = get_logger("neuravox.api.error")
+        request_id = get_request_id(request)
+        
+        # Log structured error information
+        logger.warning(
+            "api_exception",
+            error_type=exc.error_type,
+            message=exc.message,
+            details=exc.details,
+            status_code=exc.status_code,
+            operation=exc.operation,
+            request_id=request_id,
+            path=request.url.path,
+            method=request.method
+        )
+        
+        # Determine if debug info should be included
+        include_debug = os.getenv("NEURAVOX_DEBUG_MODE", "false").lower() == "true"
+        
+        # Build structured error response
+        error_response = {
+            "error": exc.to_dict(include_debug=include_debug),
+            "request_id": request_id,
+            "timestamp": exc.timestamp.isoformat()
+        }
+        
         return JSONResponse(
             status_code=exc.status_code,
-            content={
-                "error": exc.error_type,
-                "message": exc.message,
-                "details": exc.details
-            }
+            content=error_response
         )
     
     @app.exception_handler(Exception)
     async def general_exception_handler(request: Request, exc: Exception):
+        logger = get_logger("neuravox.api.error")
+        request_id = get_request_id(request)
+        
+        # Log unexpected errors with full context
+        logger.error(
+            "unexpected_exception",
+            error=str(exc),
+            error_type=type(exc).__name__,
+            request_id=request_id,
+            path=request.url.path,
+            method=request.method,
+            exc_info=True
+        )
+        
+        # Determine if debug info should be included
+        include_debug = os.getenv("NEURAVOX_DEBUG_MODE", "false").lower() == "true"
+        
+        error_response = {
+            "error": {
+                "type": "internal_server_error",
+                "message": "An unexpected error occurred",
+                "details": {"exception": str(exc)} if include_debug else {},
+                "retryable": False,
+                "timestamp": f"{__import__('datetime').datetime.utcnow().isoformat()}Z"
+            },
+            "request_id": request_id
+        }
+        
         return JSONResponse(
             status_code=500,
-            content={
-                "error": "internal_server_error",
-                "message": "An unexpected error occurred",
-                "details": {"exception": str(exc)} if app.debug else None
-            }
+            content=error_response
         )
     
     # Include routers

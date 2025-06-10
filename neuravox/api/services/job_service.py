@@ -13,6 +13,7 @@ from neuravox.api.models.database import Job, File, JobFile
 from neuravox.api.models.enums import JobStatus, JobType, FileRole
 from neuravox.api.utils.exceptions import NotFoundError, ValidationError, ConflictError
 from neuravox.shared.config import UnifiedConfig
+from neuravox.shared.logging_config import get_logger
 
 
 class JobService:
@@ -21,6 +22,7 @@ class JobService:
     def __init__(self, config: UnifiedConfig):
         self.config = config
         self._running_jobs: Dict[str, asyncio.Task] = {}
+        self.logger = get_logger("neuravox.api.jobs")
     
     async def create_job(
         self,
@@ -135,23 +137,55 @@ class JobService:
         status: JobStatus,
         progress_percent: Optional[int] = None,
         error_message: Optional[str] = None,
+        error_context: Optional[Dict[str, Any]] = None,
         result_data: Optional[Dict[str, Any]] = None,
         db: AsyncSession = None
     ) -> Job:
-        """Update job status and related fields"""
+        """Update job status and related fields with enhanced error context"""
         
         job = await self.get_job(job_id, db)
         
-        # Update status
+        # Log status change
         old_status = job.status
+        self.logger.info(
+            "job_status_update",
+            job_id=job_id,
+            old_status=old_status.value if hasattr(old_status, 'value') else str(old_status),
+            new_status=status.value,
+            progress=progress_percent
+        )
+        
+        # Update status
         job.status = status
         job.updated_at = datetime.utcnow()
         
         # Update timestamps based on status
         if status == JobStatus.PROCESSING and old_status == JobStatus.PENDING:
             job.started_at = datetime.utcnow()
+            self.logger.info("job_started", job_id=job_id)
         elif status in [JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED]:
             job.completed_at = datetime.utcnow()
+            duration = (job.completed_at - job.started_at).total_seconds() if job.started_at else None
+            
+            if status == JobStatus.COMPLETED:
+                self.logger.info(
+                    "job_completed",
+                    job_id=job_id,
+                    duration_seconds=duration
+                )
+            elif status == JobStatus.FAILED:
+                self.logger.warning(
+                    "job_failed",
+                    job_id=job_id,
+                    error_message=error_message,
+                    duration_seconds=duration
+                )
+            else:  # CANCELLED
+                self.logger.info(
+                    "job_cancelled",
+                    job_id=job_id,
+                    duration_seconds=duration
+                )
         
         # Update optional fields
         if progress_percent is not None:
@@ -160,11 +194,28 @@ class JobService:
         if error_message is not None:
             job.error_message = error_message
         
+        if error_context is not None:
+            job.error_context = json.dumps(error_context)
+            self.logger.debug(
+                "job_error_context_stored",
+                job_id=job_id,
+                context_keys=list(error_context.keys())
+            )
+        
         if result_data is not None:
             job.result_data = json.dumps(result_data)
         
-        await db.commit()
-        await db.refresh(job)
+        try:
+            await db.commit()
+            await db.refresh(job)
+        except Exception as e:
+            self.logger.error(
+                "job_status_update_failed",
+                job_id=job_id,
+                error=str(e),
+                exc_info=True
+            )
+            raise
         
         return job
     

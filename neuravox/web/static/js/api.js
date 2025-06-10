@@ -9,10 +9,12 @@ class NeuravoxAPI {
         this.defaultHeaders = {
             'Content-Type': 'application/json'
         };
+        this.requestHistory = [];
+        this.maxHistorySize = 100;
     }
 
     /**
-     * Generic API request handler
+     * Generic API request handler with enhanced error handling
      */
     async request(endpoint, options = {}) {
         const url = `${this.baseURL}${endpoint}`;
@@ -20,14 +22,52 @@ class NeuravoxAPI {
             headers: { ...this.defaultHeaders, ...options.headers },
             ...options
         };
+        
+        const requestStart = Date.now();
+        const requestId = this._generateRequestId();
+        
+        // Log request for debugging
+        this._logRequest({
+            id: requestId,
+            method: config.method || 'GET',
+            url: url,
+            timestamp: requestStart,
+            headers: config.headers
+        });
 
         try {
             const response = await fetch(url, config);
+            const duration = Date.now() - requestStart;
+            
+            // Extract request ID from response headers
+            const serverRequestId = response.headers.get('X-Request-ID');
             
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
+                
+                // Create enhanced error object
+                const enhancedError = this._createEnhancedError({
+                    response,
+                    errorData,
+                    requestId,
+                    serverRequestId,
+                    duration,
+                    endpoint,
+                    method: config.method || 'GET'
+                });
+                
+                this._logError(enhancedError);
+                throw enhancedError;
             }
+            
+            // Log successful response
+            this._logResponse({
+                id: requestId,
+                serverRequestId,
+                status: response.status,
+                duration,
+                contentType: response.headers.get('content-type')
+            });
 
             // Handle different content types
             const contentType = response.headers.get('content-type');
@@ -39,7 +79,22 @@ class NeuravoxAPI {
                 return await response.blob();
             }
         } catch (error) {
-            console.error('API Request Error:', error);
+            const duration = Date.now() - requestStart;
+            
+            // Handle network errors
+            if (!error.isEnhanced) {
+                const enhancedError = this._createEnhancedError({
+                    networkError: error,
+                    requestId,
+                    duration,
+                    endpoint,
+                    method: config.method || 'GET'
+                });
+                
+                this._logError(enhancedError);
+                throw enhancedError;
+            }
+            
             throw error;
         }
     }
@@ -276,6 +331,148 @@ class NeuravoxAPI {
         estimateSeconds += 10;
         
         return Math.round(estimateSeconds);
+    }
+    
+    /**
+     * Enhanced error handling methods
+     */
+    _generateRequestId() {
+        return 'req_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+    }
+    
+    _createEnhancedError({ response, errorData, networkError, requestId, serverRequestId, duration, endpoint, method }) {
+        const error = new Error();
+        error.isEnhanced = true;
+        error.requestId = requestId;
+        error.serverRequestId = serverRequestId;
+        error.endpoint = endpoint;
+        error.method = method;
+        error.duration = duration;
+        error.timestamp = new Date().toISOString();
+        
+        if (networkError) {
+            // Network/connection error
+            error.type = 'network_error';
+            error.message = `Network error: ${networkError.message}`;
+            error.originalError = networkError;
+            error.retryable = true;
+        } else if (response && errorData) {
+            // API error response
+            error.status = response.status;
+            error.statusText = response.statusText;
+            
+            if (errorData.error) {
+                // Structured error response
+                error.type = errorData.error.type || 'api_error';
+                error.message = errorData.error.message || 'Unknown API error';
+                error.details = errorData.error.details || {};
+                error.retryable = errorData.error.retryable || false;
+                error.operation = errorData.error.operation;
+            } else {
+                // Legacy error response
+                error.type = 'api_error';
+                error.message = errorData.detail || errorData.message || `HTTP ${response.status}: ${response.statusText}`;
+                error.details = errorData;
+                error.retryable = response.status >= 500 || response.status === 429;
+            }
+        } else {
+            // Unknown error
+            error.type = 'unknown_error';
+            error.message = 'An unknown error occurred';
+            error.retryable = false;
+        }
+        
+        return error;
+    }
+    
+    _logRequest(requestInfo) {
+        console.debug('API Request:', requestInfo);
+        this._addToHistory({
+            type: 'request',
+            ...requestInfo
+        });
+    }
+    
+    _logResponse(responseInfo) {
+        console.debug('API Response:', responseInfo);
+        this._addToHistory({
+            type: 'response',
+            ...responseInfo
+        });
+    }
+    
+    _logError(error) {
+        console.error('API Error:', {
+            type: error.type,
+            message: error.message,
+            status: error.status,
+            requestId: error.requestId,
+            serverRequestId: error.serverRequestId,
+            endpoint: error.endpoint,
+            method: error.method,
+            duration: error.duration,
+            details: error.details,
+            retryable: error.retryable
+        });
+        
+        this._addToHistory({
+            type: 'error',
+            error: {
+                type: error.type,
+                message: error.message,
+                status: error.status,
+                requestId: error.requestId,
+                serverRequestId: error.serverRequestId,
+                endpoint: error.endpoint,
+                method: error.method,
+                duration: error.duration,
+                retryable: error.retryable
+            },
+            timestamp: error.timestamp
+        });
+    }
+    
+    _addToHistory(entry) {
+        this.requestHistory.unshift(entry);
+        if (this.requestHistory.length > this.maxHistorySize) {
+            this.requestHistory = this.requestHistory.slice(0, this.maxHistorySize);
+        }
+    }
+    
+    /**
+     * Get request history for debugging
+     */
+    getRequestHistory() {
+        return [...this.requestHistory];
+    }
+    
+    /**
+     * Export request history as JSON
+     */
+    exportRequestHistory() {
+        const data = {
+            timestamp: new Date().toISOString(),
+            userAgent: navigator.userAgent,
+            url: window.location.href,
+            history: this.requestHistory
+        };
+        
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `neuravox-api-history-${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+    
+    /**
+     * Clear request history
+     */
+    clearRequestHistory() {
+        this.requestHistory = [];
     }
 }
 
