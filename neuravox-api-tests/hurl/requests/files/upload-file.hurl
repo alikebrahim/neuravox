@@ -1,8 +1,8 @@
 # Upload File
 POST {{base_url}}/upload
 Authorization: Bearer {{api_key}}
-[MultipartFormData]
-file: file,{{test_file_path}}
+[Multipart]
+file: file,{{test_file_path}};
 
 HTTP 201
 [Asserts]
