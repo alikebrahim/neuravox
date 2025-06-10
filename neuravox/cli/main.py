@@ -581,6 +581,19 @@ def config(
         console.print(f"  {config.config_path}")
 
 
+@app.command()
+def serve(
+    host: str = typer.Option("0.0.0.0", "--host", help="Host to bind to"),
+    port: int = typer.Option(8000, "--port", help="Port to bind to"),
+    workers: int = typer.Option(1, "--workers", help="Number of worker processes"),
+    reload: bool = typer.Option(False, "--reload", help="Enable auto-reload for development"),
+    config_path: Optional[Path] = typer.Option(None, "--config", "-c", help="Configuration file path")
+):
+    """Start the Neuravox API server"""
+    from neuravox.cli.commands.serve import serve_command
+    serve_command(host, port, workers, reload, config_path)
+
+
 # Helper functions (preserved from original)
 def _interactive_processing_config(
     current_config: ProcessingConfig, console: Console
