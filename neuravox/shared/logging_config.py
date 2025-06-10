@@ -4,8 +4,9 @@ import os
 import sys
 import logging
 import logging.config
+import logging.handlers
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, Any
 from contextvars import ContextVar
 
 import structlog
@@ -16,6 +17,37 @@ from pythonjsonlogger import jsonlogger
 request_id_var: ContextVar[Optional[str]] = ContextVar('request_id', default=None)
 operation_id_var: ContextVar[Optional[str]] = ContextVar('operation_id', default=None)
 job_id_var: ContextVar[Optional[str]] = ContextVar('job_id', default=None)
+
+
+class PrefixFormatter(logging.Formatter):
+    """Custom formatter with source prefixes and center-padding"""
+    
+    def __init__(self, source: str, include_context: bool = True):
+        self.source = source.center(8)  # Center-pad to 8 chars
+        self.include_context = include_context
+        super().__init__()
+    
+    def format(self, record):
+        level = record.levelname.center(5)  # Center-pad to 5 chars
+        message = record.getMessage()
+        
+        # Add context if available and enabled
+        context_parts = []
+        if self.include_context:
+            if hasattr(record, 'request_id') and record.request_id:
+                context_parts.append(f"request_id={record.request_id}")
+            if hasattr(record, 'operation_id') and record.operation_id:
+                context_parts.append(f"operation_id={record.operation_id}")
+            if hasattr(record, 'job_id') and record.job_id:
+                context_parts.append(f"job_id={record.job_id}")
+            
+            # Add any extra context from record
+            for key, value in getattr(record, 'extra_context', {}).items():
+                context_parts.append(f"{key}={value}")
+        
+        context = f" {' '.join(context_parts)}" if context_parts else ""
+        
+        return f"[{self.source}]-[{level}]: {message}{context}"
 
 
 def add_context_processor(logger, method_name, event_dict):
@@ -29,34 +61,167 @@ def add_context_processor(logger, method_name, event_dict):
     return event_dict
 
 
+def get_log_level() -> str:
+    """Get the configured log level from environment"""
+    return os.getenv("NEURAVOX_LOG_LEVEL", "INFO").upper()
+
+
+def get_log_format() -> str:
+    """Get the configured log format from environment"""
+    return os.getenv("NEURAVOX_LOG_FORMAT", "prefix").lower()
+
+
+def should_include_context() -> bool:
+    """Check if context should be included in logs"""
+    return os.getenv("NEURAVOX_LOG_CONTEXT", "true").lower() == "true"
+
+
+def get_source_logger(source: str, include_context: bool = None) -> logging.Logger:
+    """Get a logger configured for specific source with prefix formatting
+    
+    Args:
+        source: Source identifier (server, app, cli, req, etc.)
+        include_context: Whether to include context info (default: from env)
+        
+    Returns:
+        Configured logger instance
+    """
+    if include_context is None:
+        include_context = should_include_context()
+    
+    logger_name = f"neuravox.{source}"
+    logger = logging.getLogger(logger_name)
+    
+    # Only configure if not already configured
+    if not logger.handlers:
+        handler = logging.StreamHandler(sys.stdout)
+        formatter = PrefixFormatter(source, include_context)
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+        logger.setLevel(getattr(logging, get_log_level()))
+        logger.propagate = False  # Prevent duplicate logs
+    
+    # Add context injection
+    original_handle = logger.handle
+    
+    def handle_with_context(record):
+        # Inject context variables into record
+        if request_id := request_id_var.get():
+            record.request_id = request_id
+        if operation_id := operation_id_var.get():
+            record.operation_id = operation_id
+        if job_id := job_id_var.get():
+            record.job_id = job_id
+        
+        original_handle(record)
+    
+    logger.handle = handle_with_context
+    return logger
+
+
+# Convenience functions for common sources
+def get_server_logger() -> logging.Logger:
+    """Get server logger for uvicorn/FastAPI server logs"""
+    return get_source_logger("server")
+
+
+def get_app_logger() -> logging.Logger:
+    """Get application logger for FastAPI app logs"""
+    return get_source_logger("app")
+
+
+def get_cli_logger() -> logging.Logger:
+    """Get CLI logger for command-line interface"""
+    return get_source_logger("cli")
+
+
+def get_req_logger() -> logging.Logger:
+    """Get request logger for HTTP request/response logging"""
+    return get_source_logger("req")
+
+
+def get_pipeline_logger() -> logging.Logger:
+    """Get pipeline logger for audio processing"""
+    return get_source_logger("pipeline")
+
+
+def get_engine_logger() -> logging.Logger:
+    """Get engine logger for transcription engines"""
+    return get_source_logger("engine")
+
+
+def get_job_logger() -> logging.Logger:
+    """Get job logger for background jobs"""
+    return get_source_logger("job")
+
+
+def get_db_logger() -> logging.Logger:
+    """Get database logger for database operations"""
+    return get_source_logger("db")
+
+
+def get_config_logger() -> logging.Logger:
+    """Get config logger for configuration operations"""
+    return get_source_logger("config")
+
+
 def configure_logging(
     log_level: str = None,
     log_file: Optional[Path] = None,
-    json_format: bool = None,
+    log_format: str = None,
     component: str = "neuravox"
 ) -> None:
-    """Configure structured logging for Neuravox components
+    """Configure logging for Neuravox components with format selection
     
     Args:
         log_level: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         log_file: Optional file path for log output
-        json_format: Whether to use JSON format (default: True for production)
+        log_format: Format type (prefix, json, console) - default: prefix
         component: Component name for logger identification
     """
     
     # Get configuration from environment or defaults
-    log_level = log_level or os.getenv("NEURAVOX_LOG_LEVEL", "INFO")
-    json_format = json_format if json_format is not None else os.getenv("NEURAVOX_LOG_JSON", "true").lower() == "true"
+    log_level = log_level or get_log_level()
+    log_format = log_format or get_log_format()
     log_file = log_file or (Path(os.getenv("NEURAVOX_LOG_FILE", "")) if os.getenv("NEURAVOX_LOG_FILE") else None)
     
-    # Configure standard library logging
+    # Clear any existing handlers to prevent duplicates
+    logging.getLogger().handlers.clear()
+    
+    if log_format == "prefix":
+        # Use prefix-based logging (new default)
+        configure_prefix_logging(log_level, log_file)
+    elif log_format == "json":
+        # Use JSON structured logging (legacy)
+        configure_json_logging(log_level, log_file)
+    else:
+        # Use console logging (development)
+        configure_console_logging(log_level, log_file)
+
+
+def configure_prefix_logging(log_level: str, log_file: Optional[Path] = None) -> None:
+    """Configure prefix-based logging format"""
+    # Basic logging setup with minimal console output
+    logging.basicConfig(
+        level=getattr(logging, log_level),
+        format="%(message)s",
+        handlers=[]  # We'll add handlers explicitly
+    )
+    
+    # Configure file logging if specified
+    if log_file:
+        configure_file_logging(log_file, log_level, use_prefix=True)
+
+
+def configure_json_logging(log_level: str, log_file: Optional[Path] = None) -> None:
+    """Configure JSON structured logging (legacy format)"""
     logging.basicConfig(
         format="%(message)s",
         stream=sys.stdout,
-        level=getattr(logging, log_level.upper())
+        level=getattr(logging, log_level)
     )
     
-    # Configure structlog processors
+    # Configure structlog processors for JSON output
     processors = [
         structlog.stdlib.filter_by_level,
         structlog.stdlib.add_logger_name,
@@ -65,15 +230,8 @@ def configure_logging(
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.processors.StackInfoRenderer(),
         add_context_processor,
+        structlog.processors.JSONRenderer()
     ]
-    
-    if json_format:
-        processors.append(structlog.processors.JSONRenderer())
-    else:
-        processors.extend([
-            structlog.processors.format_exc_info,
-            structlog.dev.ConsoleRenderer(colors=True)
-        ])
     
     structlog.configure(
         processors=processors,
@@ -82,43 +240,91 @@ def configure_logging(
         cache_logger_on_first_use=True,
     )
     
-    # Configure file logging if specified
     if log_file:
-        log_file.parent.mkdir(parents=True, exist_ok=True)
-        
-        # Create file handler with rotation
-        file_handler = logging.handlers.RotatingFileHandler(
-            log_file,
-            maxBytes=100 * 1024 * 1024,  # 100MB
-            backupCount=5
+        configure_file_logging(log_file, log_level, use_prefix=False)
+
+
+def configure_console_logging(log_level: str, log_file: Optional[Path] = None) -> None:
+    """Configure console logging with colors (development)"""
+    logging.basicConfig(
+        format="%(message)s",
+        stream=sys.stdout,
+        level=getattr(logging, log_level)
+    )
+    
+    # Configure structlog processors for colored console output
+    processors = [
+        structlog.stdlib.filter_by_level,
+        structlog.stdlib.add_logger_name,
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.PositionalArgumentsFormatter(),
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.StackInfoRenderer(),
+        add_context_processor,
+        structlog.processors.format_exc_info,
+        structlog.dev.ConsoleRenderer(colors=True)
+    ]
+    
+    structlog.configure(
+        processors=processors,
+        wrapper_class=structlog.stdlib.BoundLogger,
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        cache_logger_on_first_use=True,
+    )
+    
+    if log_file:
+        configure_file_logging(log_file, log_level, use_prefix=False)
+
+
+def configure_file_logging(log_file: Path, log_level: str, use_prefix: bool = True) -> None:
+    """Configure file logging with rotation"""
+    log_file.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Create file handler with rotation
+    file_handler = logging.handlers.RotatingFileHandler(
+        log_file,
+        maxBytes=100 * 1024 * 1024,  # 100MB
+        backupCount=5
+    )
+    
+    if use_prefix:
+        # Use prefix format for file logging too
+        formatter = PrefixFormatter("file", include_context=True)
+    else:
+        # Use JSON format for structured file logging
+        formatter = jsonlogger.JsonFormatter(
+            '%(asctime)s %(name)s %(levelname)s %(message)s'
         )
-        
-        if json_format:
-            formatter = jsonlogger.JsonFormatter(
-                '%(asctime)s %(name)s %(levelname)s %(message)s'
-            )
-        else:
-            formatter = logging.Formatter(
-                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-            )
-        
-        file_handler.setFormatter(formatter)
-        file_handler.setLevel(getattr(logging, log_level.upper()))
-        
-        # Add to root logger
-        logging.getLogger().addHandler(file_handler)
+    
+    file_handler.setFormatter(formatter)
+    file_handler.setLevel(getattr(logging, log_level))
+    
+    # Add to root logger
+    logging.getLogger().addHandler(file_handler)
 
 
-def get_logger(name: str = "neuravox") -> structlog.BoundLogger:
+def get_logger(name: str = "neuravox"):
     """Get a configured logger instance
     
     Args:
         name: Logger name, typically module path
         
     Returns:
-        Configured structlog logger
+        Logger instance (type depends on configured format)
     """
-    return structlog.get_logger(name)
+    log_format = get_log_format()
+    
+    if log_format == "prefix":
+        # For prefix format, return standard logger
+        # Extract source from name if possible
+        if "." in name:
+            source = name.split(".")[-1]
+        else:
+            source = "app"
+        return get_source_logger(source)
+    else:
+        # For json/console formats, return structlog logger
+        return structlog.get_logger(name)
 
 
 def set_request_context(request_id: str, operation_id: str = None, job_id: str = None):
@@ -178,5 +384,10 @@ class LoggingContextManager:
 
 
 # Initialize logging on module import
-if not structlog.is_configured():
+# Only configure if we're using prefix format (default)
+# Other formats will be configured explicitly
+log_format = get_log_format()
+if log_format == "prefix" and not logging.getLogger().handlers:
+    configure_logging()
+elif log_format != "prefix" and not structlog.is_configured():
     configure_logging()
