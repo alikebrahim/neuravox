@@ -6,6 +6,7 @@ import json
 import librosa
 
 from neuravox.shared.config import UnifiedConfig
+from neuravox.shared.logging_config import get_engine_logger
 from neuravox.transcriber.models.google_ai import GoogleAIModel
 from neuravox.transcriber.models.openai import OpenAIModel
 from neuravox.transcriber.models.whisper_local import LocalWhisperModel
@@ -17,14 +18,20 @@ class AudioTranscriber:
     
     def __init__(self, config: Optional[UnifiedConfig] = None):
         self.config = config or UnifiedConfig()
+        self.logger = get_engine_logger()
         self._models = {}
+        
+        self.logger.info("Transcription engine initialized")
     
     def get_model(self, model_key: str):
         """Get or create a model instance."""
         if model_key not in self._models:
+            self.logger.info(f"Loading model: {model_key}")
             model_config = self.config.get_model(model_key)
             if not model_config:
-                raise ValueError(f"Model '{model_key}' not found in configuration")
+                error_msg = f"Model '{model_key}' not found in configuration"
+                self.logger.error(error_msg, model_key=model_key)
+                raise ValueError(error_msg)
             
             # Prepare model kwargs including system prompt if configured
             model_kwargs = model_config.parameters.copy()
@@ -33,24 +40,43 @@ class AudioTranscriber:
             
             # Create model instance based on provider
             # API keys are now handled by the model classes directly from environment
-            if model_config.provider == "google":
-                self._models[model_key] = GoogleAIModel(
-                    model_id=model_config.model_id,
-                    **model_kwargs
+            try:
+                if model_config.provider == "google":
+                    self._models[model_key] = GoogleAIModel(
+                        model_id=model_config.model_id,
+                        **model_kwargs
+                    )
+                elif model_config.provider == "openai":
+                    self._models[model_key] = OpenAIModel(
+                        model_id=model_config.model_id,
+                        **model_kwargs
+                    )
+                elif model_config.provider == "whisper-local":
+                    self._models[model_key] = LocalWhisperModel(
+                        model_id=model_config.model_id,
+                        device=model_config.device,
+                        **model_kwargs
+                    )
+                else:
+                    error_msg = f"Unsupported provider: {model_config.provider}"
+                    self.logger.error(error_msg, provider=model_config.provider, model_key=model_key)
+                    raise ValueError(error_msg)
+                
+                self.logger.info(
+                    f"Model loaded successfully",
+                    model_key=model_key,
+                    provider=model_config.provider,
+                    model_id=model_config.model_id
                 )
-            elif model_config.provider == "openai":
-                self._models[model_key] = OpenAIModel(
-                    model_id=model_config.model_id,
-                    **model_kwargs
+            except Exception as e:
+                self.logger.error(
+                    f"Failed to load model {model_key}",
+                    model_key=model_key,
+                    provider=model_config.provider,
+                    error=str(e),
+                    exc_info=True
                 )
-            elif model_config.provider == "whisper-local":
-                self._models[model_key] = LocalWhisperModel(
-                    model_id=model_config.model_id,
-                    device=model_config.device,
-                    **model_kwargs
-                )
-            else:
-                raise ValueError(f"Unsupported provider: {model_config.provider}")
+                raise
         
         return self._models[model_key]
     
@@ -71,15 +97,21 @@ class AudioTranscriber:
         Returns:
             Dictionary with transcription results and metadata
         """
+        self.logger.info(f"Starting transcription", audio_file=str(audio_path), model=model_key)
+        
         # Validate inputs
         if not audio_path.exists():
-            raise FileNotFoundError(f"Audio file not found: {audio_path}")
+            error_msg = f"Audio file not found: {audio_path}"
+            self.logger.error(error_msg, audio_path=str(audio_path))
+            raise FileNotFoundError(error_msg)
         
         # Get model and validate it's available before creating any directories
         model = self.get_model(model_key)
         
         if not model.is_available():
-            raise RuntimeError(f"Model '{model_key}' is not available")
+            error_msg = f"Model '{model_key}' is not available"
+            self.logger.error(error_msg, model_key=model_key)
+            raise RuntimeError(error_msg)
         
         # Get audio metadata using librosa
         audio_metadata = self._get_audio_metadata(audio_path)
@@ -225,10 +257,17 @@ class AudioTranscriber:
     
     def validate_model(self, model_key: str) -> bool:
         """Validate that a model is properly configured and available."""
+        self.logger.info(f"Validating model: {model_key}")
         try:
             model = self.get_model(model_key)
-            return model.is_available()
-        except Exception:
+            is_available = model.is_available()
+            if is_available:
+                self.logger.info(f"Model validation successful", model_key=model_key)
+            else:
+                self.logger.warning(f"Model validation failed: not available", model_key=model_key)
+            return is_available
+        except Exception as e:
+            self.logger.error(f"Model validation failed with exception", model_key=model_key, error=str(e))
             return False
     
     def get_audio_info(self, audio_path: Path) -> Dict[str, Any]:
