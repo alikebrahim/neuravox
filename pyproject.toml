@@ -35,7 +35,7 @@ dependencies = [
     "openai-whisper>=20231117",
     
     # CLI and UI
-    "typer[all]>=0.12.0",
+    "typer>=0.12.0",
     "rich>=13.0.0",
     "tqdm>=4.66.0",
     
@@ -51,6 +51,14 @@ dependencies = [
     "psutil>=5.9.0",
     "aiofiles>=23.2.1",
     "sqlalchemy>=2.0.0",
+    
+    # API Framework
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "python-multipart>=0.0.6",
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
+    "aiosqlite>=0.19.0",
     
     # Development
     "pytest>=8.0.0",
