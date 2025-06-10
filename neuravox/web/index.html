@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neuravox Web Demo</title>
+    <link rel="stylesheet" href="static/css/demo.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Neuravox Web Demo</h1>
+            <p>Upload audio files, configure processing settings, and get transcriptions</p>
+        </header>
+
+        <div class="demo-container">
+            <!-- Step 1: File Upload -->
+            <section class="section" id="upload-section">
+                <div class="section-header">
+                    <h2>
+                        <span class="step-number">1</span>
+                        Upload Audio File
+                    </h2>
+                </div>
+                <div class="upload-area" id="upload-area">
+                    <div class="upload-content">
+                        <div class="upload-icon">📁</div>
+                        <p>Drag and drop your audio file here or click to browse</p>
+                        <p class="upload-hint">Supported formats: MP3, WAV, FLAC, M4A, OGG, OPUS, WMA, AAC, MP4</p>
+                        <input type="file" id="file-input" accept=".mp3,.wav,.flac,.m4a,.ogg,.opus,.wma,.aac,.mp4" hidden>
+                    </div>
+                </div>
+                <div class="file-info" id="file-info" style="display: none;">
+                    <div class="file-details">
+                        <span class="file-name" id="file-name"></span>
+                        <span class="file-size" id="file-size"></span>
+                    </div>
+                    <button class="btn btn-secondary" id="change-file">Change File</button>
+                </div>
+            </section>
+
+            <!-- Step 2: Configuration -->
+            <section class="section" id="config-section" style="display: none;">
+                <div class="section-header">
+                    <h2>
+                        <span class="step-number">2</span>
+                        Configure Processing
+                    </h2>
+                </div>
+
+                <!-- Audio Processing Settings -->
+                <div class="config-group">
+                    <h3>Audio Processing</h3>
+                    <div class="config-row">
+                        <label for="silence-threshold">Silence Threshold</label>
+                        <div class="slider-container">
+                            <input type="range" id="silence-threshold" min="0.001" max="1.0" step="0.001" value="0.01">
+                            <span class="slider-value" id="silence-threshold-value">0.01</span>
+                        </div>
+                        <p class="config-help">Lower values are more sensitive to silence</p>
+                    </div>
+
+                    <div class="config-row">
+                        <label for="min-silence-duration">Minimum Silence Duration (seconds)</label>
+                        <div class="input-container">
+                            <input type="number" id="min-silence-duration" min="0.1" max="300.0" step="0.1" value="25.0">
+                        </div>
+                    </div>
+
+                    <div class="config-row">
+                        <label for="sample-rate">Sample Rate (Hz)</label>
+                        <select id="sample-rate">
+                            <option value="8000">8,000 Hz</option>
+                            <option value="16000" selected>16,000 Hz</option>
+                            <option value="22050">22,050 Hz</option>
+                            <option value="44100">44,100 Hz</option>
+                            <option value="48000">48,000 Hz</option>
+                        </select>
+                    </div>
+
+                    <div class="config-row">
+                        <label for="output-format">Output Format</label>
+                        <select id="output-format">
+                            <option value="flac" selected>FLAC</option>
+                            <option value="wav">WAV</option>
+                            <option value="mp3">MP3</option>
+                        </select>
+                    </div>
+
+                    <div class="config-row">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="normalize" checked>
+                            <span class="checkmark"></span>
+                            Normalize Audio Levels
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Transcription Settings -->
+                <div class="config-group">
+                    <h3>Transcription</h3>
+                    <div class="config-row">
+                        <label>Transcription Model</label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="model" value="google-gemini" checked>
+                                <span class="radio-mark"></span>
+                                <div class="radio-content">
+                                    <span class="radio-title">Google Gemini Flash</span>
+                                    <span class="radio-desc">Fast, accurate cloud transcription</span>
+                                </div>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="model" value="openai-whisper">
+                                <span class="radio-mark"></span>
+                                <div class="radio-content">
+                                    <span class="radio-title">OpenAI Whisper</span>
+                                    <span class="radio-desc">High-quality cloud transcription</span>
+                                </div>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="model" value="whisper-base">
+                                <span class="radio-mark"></span>
+                                <div class="radio-content">
+                                    <span class="radio-title">Whisper Base (Local)</span>
+                                    <span class="radio-desc">74M parameters, runs locally</span>
+                                </div>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="model" value="whisper-turbo">
+                                <span class="radio-mark"></span>
+                                <div class="radio-content">
+                                    <span class="radio-title">Whisper Turbo (Local)</span>
+                                    <span class="radio-desc">809M parameters, best quality</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="config-row">
+                        <label for="max-concurrent">Maximum Concurrent Transcriptions</label>
+                        <div class="slider-container">
+                            <input type="range" id="max-concurrent" min="1" max="10" step="1" value="3">
+                            <span class="slider-value" id="max-concurrent-value">3</span>
+                        </div>
+                    </div>
+
+                    <div class="config-row">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="chunk-processing" checked>
+                            <span class="checkmark"></span>
+                            Process in Chunks
+                        </label>
+                        <p class="config-help">Split audio for faster parallel processing</p>
+                    </div>
+
+                    <div class="config-row" id="combine-chunks-row">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="combine-chunks" checked>
+                            <span class="checkmark"></span>
+                            Combine Chunk Results
+                        </label>
+                        <p class="config-help">Merge individual chunk transcriptions</p>
+                    </div>
+
+                    <div class="config-row">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="include-timestamps" checked>
+                            <span class="checkmark"></span>
+                            Include Timestamps
+                        </label>
+                    </div>
+                </div>
+
+                <div class="config-actions">
+                    <button class="btn btn-primary" id="start-processing">Start Processing</button>
+                </div>
+            </section>
+
+            <!-- Step 3: Processing Progress -->
+            <section class="section" id="progress-section" style="display: none;">
+                <div class="section-header">
+                    <h2>
+                        <span class="step-number">3</span>
+                        Processing Progress
+                    </h2>
+                </div>
+                
+                <div class="progress-container">
+                    <div class="progress-stages">
+                        <div class="stage" id="stage-upload">
+                            <div class="stage-icon">📤</div>
+                            <div class="stage-info">
+                                <span class="stage-name">Upload</span>
+                                <span class="stage-status">completed</span>
+                            </div>
+                        </div>
+                        <div class="stage" id="stage-processing">
+                            <div class="stage-icon">🔄</div>
+                            <div class="stage-info">
+                                <span class="stage-name">Processing</span>
+                                <span class="stage-status">pending</span>
+                            </div>
+                        </div>
+                        <div class="stage" id="stage-transcription">
+                            <div class="stage-icon">🎯</div>
+                            <div class="stage-info">
+                                <span class="stage-name">Transcription</span>
+                                <span class="stage-status">pending</span>
+                            </div>
+                        </div>
+                        <div class="stage" id="stage-complete">
+                            <div class="stage-icon">✅</div>
+                            <div class="stage-info">
+                                <span class="stage-name">Complete</span>
+                                <span class="stage-status">pending</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="progress-details">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progress-fill"></div>
+                        </div>
+                        <div class="progress-text">
+                            <span id="progress-message">Initializing...</span>
+                            <span id="progress-percent">0%</span>
+                        </div>
+                    </div>
+
+                    <div class="job-info" id="job-info" style="display: none;">
+                        <div class="job-detail">
+                            <strong>Job ID:</strong> <span id="job-id"></span>
+                        </div>
+                        <div class="job-detail">
+                            <strong>Status:</strong> <span id="job-status"></span>
+                        </div>
+                        <div class="job-detail">
+                            <strong>Created:</strong> <span id="job-created"></span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 4: Results -->
+            <section class="section" id="results-section" style="display: none;">
+                <div class="section-header">
+                    <h2>
+                        <span class="step-number">4</span>
+                        Transcription Results
+                    </h2>
+                </div>
+
+                <div class="results-summary" id="results-summary">
+                    <!-- Summary will be populated by JavaScript -->
+                </div>
+
+                <div class="transcript-container">
+                    <div class="transcript-header">
+                        <h3>Transcript</h3>
+                        <div class="transcript-actions">
+                            <button class="btn btn-secondary" id="download-transcript">Download Transcript</button>
+                            <button class="btn btn-secondary" id="download-audio">Download Audio Files</button>
+                        </div>
+                    </div>
+                    <div class="transcript-content" id="transcript-content">
+                        <!-- Transcript will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <div class="results-actions">
+                    <button class="btn btn-primary" id="start-new">Process Another File</button>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script src="static/js/api.js"></script>
+    <script src="static/js/config.js"></script>
+    <script src="static/js/demo.js"></script>
+</body>
+</html>

@@ -7,7 +7,8 @@ from typing import Optional
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 from neuravox.shared.config import UnifiedConfig
@@ -29,8 +30,9 @@ async def lifespan(app: FastAPI):
     await db_manager.create_tables()
     print("Database initialized")
     
-    # Ensure workspace directories exist
-    config = UnifiedConfig()
+    # Ensure workspace directories exist - use project config
+    project_config_path = Path(__file__).parent.parent.parent / "config.yaml"
+    config = UnifiedConfig(project_config_path if project_config_path.exists() else None)
     config.ensure_workspace_dirs()
     print(f"Workspace ready at: {config.workspace}")
     
@@ -102,12 +104,23 @@ def create_app(config_path: Optional[Path] = None) -> FastAPI:
     app.include_router(config_router.router, prefix="/api/v1", tags=["configuration"])
     app.include_router(workspace.router, prefix="/api/v1", tags=["workspace"])
     
+    # Mount static files for web interface
+    web_dir = Path(__file__).parent.parent / "web"
+    if web_dir.exists():
+        app.mount("/static", StaticFiles(directory=str(web_dir / "static")), name="static")
+        
+        # Serve the main web interface at root
+        @app.get("/")
+        async def serve_web_interface():
+            """Serve the main web interface"""
+            return FileResponse(str(web_dir / "index.html"))
+    
     return app
 
 
 def get_cors_origins() -> list[str]:
     """Get CORS origins from environment"""
-    origins_env = os.getenv("API_CORS_ORIGINS", "http://localhost:3000")
+    origins_env = os.getenv("API_CORS_ORIGINS", "http://localhost:3000,http://localhost:8000,http://localhost:8080")
     return [origin.strip() for origin in origins_env.split(",")]
 
 
