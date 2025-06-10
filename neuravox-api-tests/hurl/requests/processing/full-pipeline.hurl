@@ -6,7 +6,7 @@ Content-Type: application/json
   "file_ids": ["{{file_id}}"],
   "config": {
     "processing": {
-      "silence_threshold": -40.0,
+      "silence_threshold": 0.4,
       "min_silence_duration": 1.0,
       "output_format": "wav",
       "sample_rate": 16000,
