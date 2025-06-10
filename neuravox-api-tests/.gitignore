@@ -1,0 +1,30 @@
+# Test data
+test-data/*
+!test-data/.gitkeep
+
+# Logs and reports
+*.log
+reports/
+logs/
+
+# Environment overrides
+.env.local
+*.local.env
+
+# IDE
+.vscode/
+.idea/
+
+# Old Posting files (to be removed)
+auth/*.posting.yaml
+files/*.posting.yaml
+jobs/*.posting.yaml
+processing/*.posting.yaml
+system/*.posting.yaml
+workflows/*.posting.yaml
+scripts/*.py
+
+# Temporary files
+temp/
+tmp/
+*.tmp
