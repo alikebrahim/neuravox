@@ -263,7 +263,7 @@ async def get_job_status(
                 id=f.id,
                 filename=f.filename,
                 original_filename=f.original_filename,
-                file_size=f.file_size,
+                size=f.file_size,
                 mime_type=f.mime_type,
                 uploaded_at=f.uploaded_at,
                 download_url=f"/api/v1/files/{f.id}/download"
