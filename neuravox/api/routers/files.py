@@ -20,7 +20,8 @@ router = APIRouter()
 
 def get_file_service() -> FileService:
     """Dependency for file service"""
-    config = UnifiedConfig()
+    project_config_path = Path(__file__).parent.parent.parent.parent / "config.yaml"
+    config = UnifiedConfig(project_config_path if project_config_path.exists() else None)
     return FileService(config)
 
 
