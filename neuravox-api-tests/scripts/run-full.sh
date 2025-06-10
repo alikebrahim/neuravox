@@ -50,7 +50,8 @@ echo -e "${YELLOW}This will test: Auth → Upload → Job Creation → Status Ch
 # Add timestamp variable for unique names
 export timestamp=$(date +%s)
 
-if OUTPUT=$(hurl --variables-file "$COMMON_FILE" \
+if OUTPUT=$(hurl --file-root . \
+                --variables-file "$COMMON_FILE" \
                 --variables-file "$ENV_FILE" \
                 --variable "timestamp=$timestamp" \
                 --test \
